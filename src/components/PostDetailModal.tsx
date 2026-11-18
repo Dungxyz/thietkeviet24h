@@ -31,7 +31,7 @@ export function PostDetailModal({
 
   // Xác định đường dẫn Demo cho sản phẩm WebApp
   const demoHref = (() => {
-    if (post.demoUrl && post.demoUrl.trim() !== '' && post.demoUrl !== '#') {
+    if (post.demoUrl && post.demoUrl.trim() !== '' && !post.demoUrl.startsWith('#')) {
       return post.demoUrl.trim();
     }
     if (post.downloadUrl && post.downloadUrl.trim() !== '' && post.downloadUrl !== '#') {

@@ -337,7 +337,7 @@ export function PublicHome({
               {webappPosts.map((item) => {
                 // Lấy link demo từ trường downloadUrl hoặc tự động map theo tên sản phẩm
                 const resolvedDemoUrl = (() => {
-                  if (item.demoUrl && item.demoUrl.trim() !== '' && item.demoUrl !== '#') {
+                  if (item.demoUrl && item.demoUrl.trim() !== '' && !item.demoUrl.startsWith('#')) {
                     return item.demoUrl.trim();
                   }
                   if (item.downloadUrl && item.downloadUrl.trim() !== '' && item.downloadUrl !== '#') {
