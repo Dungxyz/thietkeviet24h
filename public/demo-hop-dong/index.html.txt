@@ -1,0 +1,2919 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Webapp Quản Lý Tài Liệu, Văn Bản (v1.0) - Google Sheets & Drive</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+  <!-- Top Header -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+    <div class="max-w-[1600px] mx-auto px-4 h-16 flex items-center justify-between gap-3">
+      <!-- Brand & Main Nav -->
+      <div class="flex items-center gap-4">
+        <button id="mobileMenuBtn" class="lg:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100" title="Mở danh mục">
+          <i class="fa-solid fa-bars text-lg"></i>
+        </button>
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-sm">
+            <i class="fa-solid fa-folder-tree text-lg"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 id="brandAppTitle" class="font-bold text-slate-900 text-base sm:text-lg leading-tight">DMS Webapp</h1>
+              <span id="runtimeModeBadge" class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">v1.0 • Local/Canvas</span>
+            </div>
+            <p id="brandAppSubtitle" class="text-xs text-slate-500 hidden sm:block">Hệ thống Quản lý Tài liệu, Hợp đồng & Văn bản (Google Sheets + Drive)</p>
+          </div>
+        </div>
+
+        <!-- Primary Navigation Tabs -->
+        <nav class="hidden md:flex items-center gap-1 ml-6 bg-slate-100 p-1 rounded-xl">
+          <button id="navTabDocs" class="px-3.5 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-2 bg-white text-emerald-700 shadow-sm">
+            <i class="fa-solid fa-file-shield"></i>
+            <span>Kho Hồ Sơ</span>
+          </button>
+          <button id="navTabSystem" class="px-3.5 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-2 text-slate-600 hover:text-slate-900">
+            <i class="fa-solid fa-sliders"></i>
+            <span>Hệ Thống & Phân Quyền</span>
+          </button>
+          <button id="navTabAppsScript" class="px-3.5 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-2 text-slate-600 hover:text-slate-900">
+            <i class="fa-solid fa-code"></i>
+            <span>Mã Nguồn Apps Script</span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- Right Controls: Expiry Bell, Role Switcher, Add Doc -->
+      <div class="flex items-center gap-2 sm:gap-3">
+        <!-- Expiry Alert Bell -->
+        <button id="btnExpiryAlert" class="relative p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-amber-50 hover:border-amber-200 text-slate-600 transition" title="Cảnh báo hồ sơ sắp hết hạn / đã hết hạn">
+          <i class="fa-solid fa-bell text-base text-amber-500"></i>
+          <span id="expiryBadgeCount" class="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-rose-600 text-white text-[11px] font-bold flex items-center justify-center shadow">0</span>
+        </button>
+
+        <!-- Quick Account / Permission Switcher -->
+        <div class="flex items-center gap-2 bg-slate-100 px-2.5 py-1.5 rounded-xl border border-slate-200">
+          <i class="fa-solid fa-user-shield text-emerald-600 text-sm hidden sm:inline"></i>
+          <div class="text-xs">
+            <label for="userSwitcherSelect" class="sr-only">Chuyển tài khoản xem thử phân quyền</label>
+            <select id="userSwitcherSelect" class="bg-transparent font-semibold text-slate-800 focus:outline-none cursor-pointer pr-1">
+              <!-- Populated by JS -->
+            </select>
+          </div>
+          <button id="btnOpenLoginModal" class="text-xs px-2 py-1 rounded-lg bg-white text-slate-700 hover:text-emerald-700 border border-slate-200 shadow-sm font-medium" title="Đổi tài khoản / Mật khẩu">
+            <i class="fa-solid fa-right-to-bracket"></i>
+          </button>
+        </div>
+
+        <!-- Quick System & Permission Modal Trigger (Matches User Screenshot) -->
+        <button id="btnOpenQuickSystemModal" class="px-3 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 font-semibold text-xs sm:text-sm shadow-xs transition flex items-center gap-1.5" title="Mở nhanh hộp thoại Cấu hình Hệ thống & Phân quyền">
+          <i class="fa-solid fa-sliders text-blue-600"></i>
+          <span class="hidden sm:inline">Hệ thống</span>
+        </button>
+
+        <!-- Primary Add Document Button -->
+        <button id="btnHeaderAddDoc" class="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-sm transition flex items-center gap-2">
+          <i class="fa-solid fa-plus"></i>
+          <span class="hidden sm:inline">Thêm mới hồ sơ</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile Nav Bar -->
+    <div class="flex md:hidden border-t border-slate-100 px-3 py-1.5 gap-1 bg-slate-50 overflow-x-auto">
+      <button id="navTabDocsMobile" class="flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold bg-white text-emerald-700 shadow-sm whitespace-nowrap">
+        <i class="fa-solid fa-file-shield mr-1"></i>Kho Hồ Sơ
+      </button>
+      <button id="navTabSystemMobile" class="flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold text-slate-600 whitespace-nowrap">
+        <i class="fa-solid fa-sliders mr-1"></i>Hệ Thống
+      </button>
+      <button id="navTabAppsScriptMobile" class="flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold text-slate-600 whitespace-nowrap">
+        <i class="fa-solid fa-code mr-1"></i>Apps Script
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Workspace Container -->
+  <div class="max-w-[1600px] w-full mx-auto flex-1 flex flex-col lg:flex-row gap-5 p-4">
+
+    <!-- VIEW 1: DOCUMENT REPOSITORY (SIDEBAR + MAIN CONTENT) -->
+    <div id="viewDocsContainer" class="w-full flex flex-col lg:flex-row gap-5">
+
+      <!-- Left Sidebar: Categories & File Types -->
+      <aside id="leftSidebar" class="w-full lg:w-72 shrink-0 flex flex-col gap-4 hidden lg:flex">
+        <!-- Drive Storage Status Banner -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Thư mục Google Drive</span>
+            <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Đã kết nối
+            </span>
+          </div>
+          <div class="flex items-center gap-2.5">
+            <i class="fa-brands fa-google-drive text-xl text-amber-500"></i>
+            <div class="min-w-0 flex-1">
+              <p id="sidebarDriveFolderName" class="text-sm font-semibold text-slate-800 truncate">Kho_Ho_So_Doanh_Nghiep_2026</p>
+              <p id="sidebarDriveFolderId" class="text-[11px] text-slate-400 truncate">ID: 1A9x_DriveFolder_DMS_2026</p>
+            </div>
+            <button id="btnSidebarConfigDrive" class="p-1.5 text-slate-400 hover:text-emerald-600 rounded-lg hover:bg-slate-100" title="Cấu hình thư mục lưu trữ">
+              <i class="fa-solid fa-gear text-sm"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Category Tree Card -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex-1 flex flex-col">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500">Danh Mục Hồ Sơ</h2>
+            <button id="btnQuickAddCategory" class="text-xs font-semibold text-emerald-600 hover:text-emerald-700 flex items-center gap-1" title="Cấu hình danh mục">
+              <i class="fa-solid fa-sliders"></i> Tùy chỉnh
+            </button>
+          </div>
+
+          <div id="categorySidebarList" class="space-y-1 overflow-y-auto custom-scrollbar max-h-[380px] pr-1">
+            <!-- Rendered by JS -->
+          </div>
+
+          <!-- File Type Filter Tabs (Bottom of Sidebar as in Video 01:29) -->
+          <div class="mt-5 pt-4 border-t border-slate-100">
+            <div class="flex items-center justify-between mb-2.5">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Phân Loại Tệp Đính Kèm</h3>
+              <span id="activeFileTypeLabel" class="text-[11px] text-slate-400">Tất cả</span>
+            </div>
+            <div id="fileTypeFilterGrid" class="grid grid-cols-2 gap-1.5">
+              <!-- Rendered by JS -->
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Right Main Area: Filters, Grouping, Toolbar, Table -->
+      <main class="flex-1 min-w-0 flex flex-col gap-4">
+
+        <!-- Expiry Warning Banner (Togglable) -->
+        <div id="expiryAlertBanner" class="hidden bg-amber-50 border border-amber-200 rounded-2xl p-4 shadow-sm">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="flex items-start sm:items-center gap-3">
+              <div class="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-700 flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-triangle-exclamation text-base"></i>
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-amber-900">Cảnh báo thời hạn hiệu lực hồ sơ</h3>
+                <p id="expiryBannerSubtext" class="text-xs text-amber-700 mt-0.5">Đang lọc danh sách các hồ sơ sắp đến hạn (trong 30 ngày) hoặc đã quá hạn.</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button id="btnShowAllFromExpiry" class="px-3 py-1.5 rounded-xl bg-white border border-amber-300 text-xs font-semibold text-amber-900 hover:bg-amber-100 transition">
+                Xem lại tất cả hồ sơ
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Multi-condition Filter Bar (As in Video 01:44 - 02:15) -->
+        <section class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+            <!-- Search Input -->
+            <div class="lg:col-span-2 relative">
+              <label for="filterSearchInput" class="block text-[11px] font-semibold text-slate-500 mb-1">Tìm kiếm nhanh</label>
+              <div class="relative">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                <input id="filterSearchInput" type="text" placeholder="Số hồ sơ, tên văn bản, mô tả..." class="w-full pl-8 pr-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 bg-slate-50/60" />
+              </div>
+            </div>
+
+            <!-- Department Filter -->
+            <div>
+              <label for="filterDepartment" class="block text-[11px] font-semibold text-slate-500 mb-1">Phòng ban</label>
+              <select id="filterDepartment" class="w-full px-2.5 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50/60 focus:outline-none focus:border-emerald-500">
+                <option value="ALL">Tất cả phòng ban</option>
+              </select>
+            </div>
+
+            <!-- Project Filter -->
+            <div>
+              <label for="filterProject" class="block text-[11px] font-semibold text-slate-500 mb-1">Dự án</label>
+              <select id="filterProject" class="w-full px-2.5 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50/60 focus:outline-none focus:border-emerald-500">
+                <option value="ALL">Tất cả dự án</option>
+              </select>
+            </div>
+
+            <!-- Vendor Filter -->
+            <div>
+              <label for="filterVendor" class="block text-[11px] font-semibold text-slate-500 mb-1">Nhà cung cấp</label>
+              <select id="filterVendor" class="w-full px-2.5 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50/60 focus:outline-none focus:border-emerald-500">
+                <option value="ALL">Tất cả nhà cung cấp</option>
+              </select>
+            </div>
+
+            <!-- Owner (Uploader) Filter -->
+            <div>
+              <label for="filterOwner" class="block text-[11px] font-semibold text-slate-500 mb-1">Người phụ trách</label>
+              <select id="filterOwner" class="w-full px-2.5 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50/60 focus:outline-none focus:border-emerald-500">
+                <option value="ALL">Tất cả người nhập</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Second Row: Date Range, Group By, Export Excel, Reset -->
+          <div class="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-end justify-between gap-3">
+            <div class="flex flex-wrap items-center gap-3">
+              <div>
+                <label for="filterDateFrom" class="block text-[11px] font-semibold text-slate-500 mb-1">Từ ngày ban hành</label>
+                <input id="filterDateFrom" type="date" class="px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 bg-slate-50/60 focus:outline-none focus:border-emerald-500" />
+              </div>
+              <div>
+                <label for="filterDateTo" class="block text-[11px] font-semibold text-slate-500 mb-1">Đến ngày ban hành</label>
+                <input id="filterDateTo" type="date" class="px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 bg-slate-50/60 focus:outline-none focus:border-emerald-500" />
+              </div>
+
+              <!-- Group By Selector (Video 01:58) -->
+              <div>
+                <label for="groupBySelect" class="block text-[11px] font-semibold text-slate-500 mb-1">Gom nhóm theo (Group by)</label>
+                <select id="groupBySelect" class="px-3 py-1.5 text-xs font-semibold rounded-xl border border-emerald-200 bg-emerald-50/60 text-emerald-800 focus:outline-none focus:border-emerald-500">
+                  <option value="NONE">Không gom nhóm</option>
+                  <option value="project">Gom theo Dự án</option>
+                  <option value="department">Gom theo Phòng ban</option>
+                  <option value="categoryId">Gom theo Danh mục</option>
+                  <option value="owner">Gom theo Người phụ trách</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button id="btnResetFilters" class="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-100 transition flex items-center gap-1.5">
+                <i class="fa-solid fa-rotate-left"></i> Đặt lại bộ lọc
+              </button>
+              <button id="btnExportExcel" class="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-sm">
+                <i class="fa-solid fa-file-excel text-emerald-400"></i> Xuất Excel (.csv)
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Active Category Header & Summary Metrics -->
+        <div class="flex flex-wrap items-center justify-between gap-2 px-1">
+          <div class="flex items-center gap-2.5">
+            <span id="currentCategoryBadge" class="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-sm shadow-sm">
+              <i class="fa-solid fa-layer-group"></i>
+            </span>
+            <div>
+              <h2 id="currentCategoryTitle" class="text-base font-bold text-slate-900">Tổng tất cả các hồ sơ</h2>
+              <p id="currentFilterSummary" class="text-xs text-slate-500">Hiển thị 0 hồ sơ • Quyền truy cập: Toàn quyền (Admin)</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3 text-xs">
+            <div class="px-3 py-1.5 rounded-xl bg-white border border-slate-200 shadow-sm">
+              <span class="text-slate-500">Tổng giá trị HĐ hiển thị:</span>
+              <strong id="totalContractValueDisplay" class="text-emerald-700 ml-1">0 ₫</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Document Table / Grouped List Container -->
+        <section class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex-1">
+          <div class="overflow-x-auto custom-scrollbar">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-slate-50/90 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  <th class="py-3 px-4">Số HS / Tên Tài Liệu</th>
+                  <th class="py-3 px-3">Danh Mục</th>
+                  <th class="py-3 px-3">Phòng Ban / Dự Án</th>
+                  <th class="py-3 px-3">Nhà Cung Cấp</th>
+                  <th class="py-3 px-3">Ban Hành / Kết Thúc</th>
+                  <th class="py-3 px-3 text-right">Giá Trị HĐ</th>
+                  <th class="py-3 px-3">Tệp Đính Kèm</th>
+                  <th class="py-3 px-4 text-right">Thao Tác</th>
+                </tr>
+              </thead>
+              <tbody id="documentTableBody" class="divide-y divide-slate-100 text-xs">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- VIEW 2: SYSTEM CONFIGURATION & USER PERMISSIONS (As in Video 03:25 & 04:00) -->
+    <div id="viewSystemContainer" class="hidden w-full space-y-5">
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <i class="fa-solid fa-sliders text-emerald-600"></i>
+            Cấu Hình Hệ Thống & Phân Quyền Truy Cập
+          </h2>
+          <p class="text-xs text-slate-500 mt-0.5">Quản lý linh hoạt danh mục hồ sơ (icon, màu sắc), phòng ban, dự án, nhà cung cấp, thư mục Google Drive và phân quyền từng User.</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <span id="systemRoleNotice" class="text-xs font-semibold px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200">
+            Đang đăng nhập: Admin
+          </span>
+          <button id="btnClearDemoDocs" class="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold transition flex items-center gap-1.5" title="Xóa các hồ sơ mẫu để bắt đầu nhập dữ liệu thật">
+            <i class="fa-solid fa-broom"></i> Xóa hồ sơ mẫu (Làm sạch)
+          </button>
+          <button id="btnBackupJson" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-semibold transition flex items-center gap-1.5">
+            <i class="fa-solid fa-download"></i> Sao lưu (.json)
+          </button>
+          <label for="inputRestoreJson" class="cursor-pointer px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-semibold transition flex items-center gap-1.5">
+            <i class="fa-solid fa-upload"></i> Khôi phục (.json)
+          </label>
+          <input id="inputRestoreJson" type="file" accept=".json" class="hidden" />
+        </div>
+      </div>
+
+      <!-- Brand & App Customization Card -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+        <h3 class="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
+          <i class="fa-solid fa-building text-emerald-600"></i> Tùy Chỉnh Tên Đơn Vị / Thương Hiệu Trên Giao Diện
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end text-xs">
+          <div class="md:col-span-4">
+            <label for="inputBrandTitle" class="block font-semibold text-slate-700 mb-1">Tên phần mềm / Tên Công ty</label>
+            <input id="inputBrandTitle" type="text" value="DMS Webapp" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500" />
+          </div>
+          <div class="md:col-span-6">
+            <label for="inputBrandSubtitle" class="block font-semibold text-slate-700 mb-1">Mô tả phụ dưới tiêu đề</label>
+            <input id="inputBrandSubtitle" type="text" value="Hệ thống Quản lý Tài liệu, Hợp đồng & Văn bản (Google Sheets + Drive)" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500" />
+          </div>
+          <div class="md:col-span-2">
+            <button id="btnSaveBrandConfig" class="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold transition shadow-sm">
+              <i class="fa-solid fa-check mr-1"></i> Áp dụng
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Drive Storage Configuration Card (LOCKED FOR CLIENT DEMO) -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+          <div class="flex items-start gap-3">
+            <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-lg shrink-0 border border-amber-200">
+              <i class="fa-brands fa-google-drive"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="text-sm font-bold text-slate-900">1. Cấu Hình Thư Mục Google Drive Lưu Trữ Tệp</h3>
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                  <i class="fa-solid fa-lock text-[10px]"></i> Đã khóa cố định (Chế độ Demo)
+                </span>
+              </div>
+              <p class="text-xs text-slate-500 mt-0.5">Đường dẫn thư mục Google Drive đã được khóa bảo vệ trong mã nguồn để tránh khách xem demo thay đổi nhầm.</p>
+            </div>
+          </div>
+          <div id="driveCheckStatusBadge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <i class="fa-solid fa-lock"></i> Đã khóa: 10-d91Cf-_xYpx54B0uR-Fzvc48Jcwl8-
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-3 mt-4 items-end">
+          <div class="md:col-span-6">
+            <label for="inputDriveFolderUrl" class="block text-xs font-semibold text-slate-700 mb-1">Link thư mục Google Drive cố định (Read-only)</label>
+            <div class="relative">
+              <input id="inputDriveFolderUrl" type="text" readonly disabled value="https://drive.google.com/drive/folders/10-d91Cf-_xYpx54B0uR-Fzvc48Jcwl8-?usp=drive_link" class="w-full pl-3 pr-9 py-2 text-xs rounded-xl border border-slate-200 bg-slate-100 text-slate-500 font-mono cursor-not-allowed select-all" />
+              <i class="fa-solid fa-lock absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+            </div>
+          </div>
+          <div class="md:col-span-3">
+            <label for="inputDriveFolderName" class="block text-xs font-semibold text-slate-700 mb-1">Tên thư mục nhận diện</label>
+            <input id="inputDriveFolderName" type="text" readonly disabled value="Kho_Ho_So_Demo_Khach_Hang" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-100 text-slate-500 cursor-not-allowed" />
+          </div>
+          <div class="md:col-span-3 flex items-center gap-2">
+            <button id="btnVerifyDriveFolder" class="flex-1 py-2 px-3 rounded-xl border border-slate-200 bg-slate-100 text-xs font-semibold text-slate-500 cursor-not-allowed" title="Đã khóa trong bản Demo">
+              <i class="fa-solid fa-lock mr-1 text-amber-600"></i> Kiểm tra
+            </button>
+            <button id="btnSaveDriveFolder" class="flex-1 py-2 px-3 rounded-xl bg-slate-400 text-white text-xs font-semibold cursor-not-allowed" title="Đã khóa chỉnh sửa trên giao diện Demo">
+              <i class="fa-solid fa-lock mr-1"></i> Lưu Drive
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Grid: Category Management & Master Data (Departments, Projects, Vendors) -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <!-- Category Config (5 cols) -->
+        <div class="lg:col-span-5 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col">
+          <h3 class="text-sm font-bold text-slate-900 mb-1 flex items-center gap-2">
+            <i class="fa-solid fa-folder-open text-emerald-600"></i> Danh Mục Hồ Sơ (Icon & Màu Sắc)
+          </h3>
+          <p class="text-xs text-slate-500 mb-4">Tùy chỉnh biểu tượng, màu sắc và xem số lượng văn bản trong từng danh mục.</p>
+
+          <!-- Add / Update Category Form -->
+          <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 mb-4 space-y-3">
+            <input type="hidden" id="editCategoryId" value="" />
+            <div class="grid grid-cols-1 sm:grid-cols-12 gap-2">
+              <div class="sm:col-span-6">
+                <label for="inputCategoryName" class="block text-[11px] font-semibold text-slate-600 mb-1">Tên danh mục</label>
+                <input id="inputCategoryName" type="text" placeholder="VD: Hồ sơ đấu thầu..." class="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white" />
+              </div>
+              <div class="sm:col-span-3">
+                <label for="inputCategoryIcon" class="block text-[11px] font-semibold text-slate-600 mb-1">Biểu tượng</label>
+                <select id="inputCategoryIcon" class="w-full px-2 py-1.5 text-xs rounded-lg border border-slate-200 bg-white">
+                  <option value="fa-file-signature">Hợp đồng</option>
+                  <option value="fa-file-circle-plus">Phụ lục</option>
+                  <option value="fa-clipboard-check">Nghiệm thu</option>
+                  <option value="fa-file-invoice-dollar">Hóa đơn</option>
+                  <option value="fa-scale-balanced">Pháp lý</option>
+                  <option value="fa-bullhorn">Marketing / Sự kiện</option>
+                  <option value="fa-certificate">Chứng nhận</option>
+                  <option value="fa-briefcase">Dự án</option>
+                </select>
+              </div>
+              <div class="sm:col-span-3">
+                <label for="inputCategoryColor" class="block text-[11px] font-semibold text-slate-600 mb-1">Màu sắc</label>
+                <input id="inputCategoryColor" type="color" value="#059669" class="w-full h-8 rounded-lg border border-slate-200 bg-white p-0.5 cursor-pointer" />
+              </div>
+            </div>
+            <div class="flex justify-end gap-2">
+              <button id="btnCancelEditCategory" class="hidden px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 bg-white">Hủy</button>
+              <button id="btnSaveCategory" class="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition">
+                <i class="fa-solid fa-plus mr-1"></i> Lưu danh mục
+              </button>
+            </div>
+          </div>
+
+          <div id="systemCategoryList" class="space-y-2 overflow-y-auto custom-scrollbar max-h-80 pr-1">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- Master Attributes Config: Department, Project, Vendor (7 cols) -->
+        <div class="lg:col-span-7 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <!-- Department Column -->
+          <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col">
+            <h3 class="text-sm font-bold text-slate-900 mb-2 flex items-center gap-1.5">
+              <i class="fa-solid fa-building-user text-blue-600"></i> Phòng Ban
+            </h3>
+            <div class="flex gap-1.5 mb-3">
+              <input id="inputNewDepartment" type="text" placeholder="Thêm phòng ban..." class="flex-1 min-w-0 px-2.5 py-1.5 text-xs rounded-lg border border-slate-200" />
+              <button id="btnAddDepartment" class="px-2.5 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700" title="Thêm phòng ban">
+                <i class="fa-solid fa-plus"></i>
+              </button>
+            </div>
+            <div id="systemDepartmentList" class="space-y-1.5 overflow-y-auto custom-scrollbar max-h-80 text-xs"></div>
+          </div>
+
+          <!-- Project Column -->
+          <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col">
+            <h3 class="text-sm font-bold text-slate-900 mb-2 flex items-center gap-1.5">
+              <i class="fa-solid fa-diagram-project text-purple-600"></i> Dự Án
+            </h3>
+            <div class="flex gap-1.5 mb-3">
+              <input id="inputNewProject" type="text" placeholder="Thêm dự án..." class="flex-1 min-w-0 px-2.5 py-1.5 text-xs rounded-lg border border-slate-200" />
+              <button id="btnAddProject" class="px-2.5 py-1.5 rounded-lg bg-purple-600 text-white text-xs font-semibold hover:bg-purple-700" title="Thêm dự án">
+                <i class="fa-solid fa-plus"></i>
+              </button>
+            </div>
+            <div id="systemProjectList" class="space-y-1.5 overflow-y-auto custom-scrollbar max-h-80 text-xs"></div>
+          </div>
+
+          <!-- Vendor Column -->
+          <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col">
+            <h3 class="text-sm font-bold text-slate-900 mb-2 flex items-center gap-1.5">
+              <i class="fa-solid fa-handshake text-amber-600"></i> Nhà Cung Cấp
+            </h3>
+            <div class="flex gap-1.5 mb-3">
+              <input id="inputNewVendor" type="text" placeholder="Thêm NCC..." class="flex-1 min-w-0 px-2.5 py-1.5 text-xs rounded-lg border border-slate-200" />
+              <button id="btnAddVendor" class="px-2.5 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700" title="Thêm nhà cung cấp">
+                <i class="fa-solid fa-plus"></i>
+              </button>
+            </div>
+            <div id="systemVendorList" class="space-y-1.5 overflow-y-auto custom-scrollbar max-h-80 text-xs"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Expanded User Permission Management (Multi-Account Card View + Matrix View) -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+          <div>
+            <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+              <i class="fa-solid fa-users-gear text-blue-600"></i>
+              3. Phân Quyền Mở Rộng Cho Nhiều Tài Khoản (Theo Từng Danh Mục & Quyền Thao Tác)
+            </h3>
+            <p class="text-xs text-slate-500 mt-0.5">Thêm không giới hạn tài khoản nhân viên/phòng ban, tích chọn từng danh mục được phép truy cập và quyền thao tác (Xem, Thêm, Sửa, Xóa).</p>
+          </div>
+          <div class="flex items-center gap-2 self-start sm:self-auto">
+            <div class="relative">
+              <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+              <input id="searchUserPermissionInput" type="text" placeholder="Tìm tài khoản, tên NV..." class="pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:border-blue-500" />
+            </div>
+            <button id="btnAddNewUserModal" class="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-sm">
+              <i class="fa-solid fa-user-plus"></i> Thêm tài khoản User
+            </button>
+          </div>
+        </div>
+
+        <!-- Inline Quick Create Account Bar -->
+        <div class="bg-slate-50 rounded-2xl p-4 border border-slate-200">
+          <div class="text-xs font-bold text-slate-700 mb-2.5 flex items-center gap-1.5">
+            <i class="fa-solid fa-bolt text-amber-500"></i> Tạo Nhanh Tài Khoản & Cấp Quyền Truy Cập
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-2.5 items-end text-xs">
+            <div class="lg:col-span-2">
+              <label for="inlineUserUsername" class="block text-[11px] font-semibold text-slate-600 mb-1">Tên đăng nhập *</label>
+              <input id="inlineUserUsername" type="text" placeholder="VD: ketoan01" class="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white" />
+            </div>
+            <div class="lg:col-span-3">
+              <label for="inlineUserFullName" class="block text-[11px] font-semibold text-slate-600 mb-1">Họ tên / Chức vụ *</label>
+              <input id="inlineUserFullName" type="text" placeholder="VD: Trần Thị B - Kế toán" class="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white" />
+            </div>
+            <div class="lg:col-span-2">
+              <label for="inlineUserPassword" class="block text-[11px] font-semibold text-slate-600 mb-1">Mật khẩu *</label>
+              <input id="inlineUserPassword" type="text" value="123456" class="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-mono" />
+            </div>
+            <div class="lg:col-span-2">
+              <label for="inlineUserRole" class="block text-[11px] font-semibold text-slate-600 mb-1">Vai trò hệ thống</label>
+              <select id="inlineUserRole" class="w-full px-2.5 py-2 rounded-xl border border-slate-200 bg-white">
+                <option value="USER">User (Nhân viên)</option>
+                <option value="MANAGER">Manager (Trưởng bộ phận)</option>
+                <option value="ADMIN">Admin (Quản trị toàn quyền)</option>
+              </select>
+            </div>
+            <div class="lg:col-span-3 flex items-center gap-2">
+              <button id="btnInlineCreateUser" type="button" class="w-full py-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold transition flex items-center justify-center gap-1.5 shadow-sm">
+                <i class="fa-solid fa-plus"></i> Thêm vào danh sách phân quyền
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Detailed User Permission Cards (Matches & Expands User Screenshot) -->
+        <div id="expandedUserPermissionCards" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Populated by JS -->
+        </div>
+
+        <!-- Summary Matrix Table -->
+        <details class="group pt-2 border-t border-slate-100">
+          <summary class="cursor-pointer text-xs font-bold text-slate-600 hover:text-slate-900 flex items-center gap-2 py-2">
+            <i class="fa-solid fa-table-cells text-emerald-600"></i>
+            <span>Xem Bảng Ma Trận Tổng Hợp Phân Quyền Tất Cả Tài Khoản</span>
+            <i class="fa-solid fa-chevron-down text-[10px] group-open:rotate-180 transition"></i>
+          </summary>
+          <div class="overflow-x-auto custom-scrollbar mt-2">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr id="permissionTableHeadRow" class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase text-slate-500">
+                  <!-- Populated by JS -->
+                </tr>
+              </thead>
+              <tbody id="permissionTableBody" class="divide-y divide-slate-100">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <!-- VIEW 3: GOOGLE APPS SCRIPT SOURCE CODE & DEPLOY GUIDE -->
+    <div id="viewAppsScriptContainer" class="hidden w-full space-y-5">
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+          <div>
+            <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <i class="fa-solid fa-code text-emerald-600"></i>
+              Bộ Mã Nguồn Đưa Vào Sử Dụng Thực Tế & Hướng Dẫn Chỉnh Sửa Code
+            </h2>
+            <p class="text-xs text-slate-600 mt-1">
+              Giao diện này đã được tích hợp sẵn cầu nối <code>google.script.run</code> tự động. Bạn có thể tải về dùng ngay trên máy hoặc gắn vào <strong>Google Sheets + Google Drive</strong> chỉ với 2 tệp (<code>Code.gs</code> và <code>Index.html</code>).
+            </p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 shrink-0">
+            <button id="btnCopyIndexHtml" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-sm">
+              <i class="fa-regular fa-file-code text-emerald-400"></i> Sao chép mã Index.html
+            </button>
+            <button id="btnDownloadIndexHtml" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-sm">
+              <i class="fa-solid fa-download"></i> Tải file Index.html
+            </button>
+          </div>
+        </div>
+
+        <!-- 3-Step Deployment Guide -->
+        <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+          <div class="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200">
+            <div class="font-bold text-emerald-900 mb-1">Bước 1: Dán Code.gs & Chạy setupDatabase()</div>
+            <p class="text-emerald-800">Mở file Google Sheets mới → <strong>Tiện ích mở rộng → Apps Script</strong>. Xóa mã cũ trong <code>Code.gs</code>, dán mã bên dưới vào, chọn hàm <code>setupDatabase</code> trên thanh công cụ và nhấn <strong>Chạy (Run)</strong>.</p>
+          </div>
+          <div class="p-3.5 rounded-xl bg-blue-50/70 border border-blue-200">
+            <div class="font-bold text-blue-900 mb-1">Bước 2: Tạo tệp HTML tên là Index</div>
+            <p class="text-blue-800">Trong Apps Script, nhấn dấu <strong>+ (Thêm tệp) → HTML</strong>, đặt tên chính xác là <code>Index</code> (tạo thành <code>Index.html</code>). Nhấn nút <strong>Sao chép mã Index.html</strong> ở góc trên và dán đè vào.</p>
+          </div>
+          <div class="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200">
+            <div class="font-bold text-amber-900 mb-1">Bước 3: Triển khai Ứng dụng Web</div>
+            <p class="text-amber-800">Nhấn <strong>Triển khai → Tùy chọn triển khai mới → Ứng dụng web</strong>. Chọn thực thi dưới tên <em>Tôi (Me)</em> và quyền truy cập <em>Bất kỳ ai (Anyone)</em> để lấy đường dẫn Webapp sử dụng.</p>
+          </div>
+        </div>
+
+        <!-- Code Map for Easy Customization -->
+        <div class="mt-5 bg-slate-50 rounded-xl border border-slate-200 p-4">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700 mb-2.5 flex items-center gap-1.5">
+            <i class="fa-solid fa-compass-drafting text-emerald-600"></i> Sơ Đồ Vị Trí Chỉnh Sửa Code (Nhấn Ctrl+F trong trình sửa code để tìm nhanh)
+          </h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+            <div class="bg-white p-3 rounded-lg border border-slate-200">
+              <span class="font-mono text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">DEFAULT_STATE</span>
+              <p class=" font-semibold text-slate-800 mt-1.5">Dữ liệu & Danh mục mặc định</p>
+              <p class="text-[11px] text-slate-500 mt-0.5">Sửa danh sách Phòng ban, Dự án, Nhà cung cấp, Tài khoản Admin/User mặc định.</p>
+            </div>
+            <div class="bg-white p-3 rounded-lg border border-slate-200">
+              <span class="font-mono text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">renderDocumentRow</span>
+              <p class="font-semibold text-slate-800 mt-1.5">Cột hiển thị bảng Hồ Sơ</p>
+              <p class="text-[11px] text-slate-500 mt-0.5">Thêm/bớt cột hiển thị trên bảng chính hoặc đổi định dạng tiền tệ, nhãn trạng thái.</p>
+            </div>
+            <div class="bg-white p-3 rounded-lg border border-slate-200">
+              <span class="font-mono text-[11px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded">getExpiryStatus</span>
+              <p class="font-semibold text-slate-800 mt-1.5">Công thức cảnh báo hết hạn</p>
+              <p class="text-[11px] text-slate-500 mt-0.5">Đang đặt cảnh báo vàng khi còn <code>&lt;= 30</code> ngày. Bạn có thể đổi thành 15 hoặc 60 ngày.</p>
+            </div>
+            <div class="bg-white p-3 rounded-lg border border-slate-200">
+              <span class="font-mono text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded">uploadFileToDrive</span>
+              <p class="font-semibold text-slate-800 mt-1.5">Xử lý lưu tệp Google Drive</p>
+              <p class="text-[11px] text-slate-500 mt-0.5">Nằm trong <code>Code.gs</code>, tự động giải mã Base64, tạo file vào Drive và trả về link Preview.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <div class="flex items-center justify-between bg-slate-900 text-slate-200 px-4 py-2.5 rounded-t-xl">
+            <span class="text-xs font-mono font-semibold">Code.gs (Google Apps Script Backend - Đồng bộ 2 chiều với Index.html)</span>
+            <button id="btnCopyAppsScript" class="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition flex items-center gap-1.5">
+              <i class="fa-regular fa-copy"></i> Sao chép Code.gs
+            </button>
+          </div>
+          <pre id="appsScriptCodeBlock" class="bg-slate-950 text-emerald-300 p-4 rounded-b-xl text-xs font-mono overflow-x-auto max-h-[460px] custom-scrollbar leading-relaxed">/**
+ * WEBAPP QUẢN LÝ TÀI LIỆU, VĂN BẢN (v1.0) - GOOGLE SHEETS & DRIVE
+ * Tương thích 100% với tệp giao diện Index.html
+ */
+
+// KHÓA CỨNG ID THƯ MỤC GOOGLE DRIVE CHO BẢN DEMO (Khách không thể sửa từ giao diện)
+const LOCKED_DRIVE_FOLDER_ID = '10-d91Cf-_xYpx54B0uR-Fzvc48Jcwl8-';
+
+// Hỗ trợ vừa chạy trực tiếp bằng HtmlService vừa làm REST API cho GitHub Pages
+function doGet(e) {
+  setupDatabase();
+  if (e && e.parameter && e.parameter.action === 'getInitialData') {
+    return ContentService.createTextOutput(JSON.stringify({ ok: true, data: getInitialData() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+  return HtmlService.createHtmlOutputFromFile('Index')
+    .setTitle('Webapp Quản Lý Tài Liệu, Văn Bản (v1.0)')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+function doPost(e) {
+  try {
+    const body = JSON.parse(e.postData.contents || '{}');
+    if (body.action === 'syncState') {
+      return ContentService.createTextOutput(JSON.stringify(syncFullStateToSheets(body.state)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    if (body.action === 'uploadFile') {
+      body.payload.folderId = LOCKED_DRIVE_FOLDER_ID;
+      return ContentService.createTextOutput(JSON.stringify(uploadFileToDrive(body.payload)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, message: 'Unknown action' }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, message: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function setupDatabase() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheets = {
+    'HoSo': ['ID', 'SoHoSo', 'TenTaiLieu', 'DanhMucID', 'PhongBan', 'DuAn', 'NhaCungCap', 'NgayBanHanh', 'NgayKetThuc', 'GiaTri', 'TinhTrang', 'MoTa', 'FileName', 'FileType', 'NguoiPhuTrach', 'PreviewUrl'],
+    'DanhMuc': ['ID', 'TenDanhMuc', 'Icon', 'MauSac'],
+    'CauHinh': ['Key', 'JSONValue'],
+    'NguoiDung': ['Username', 'Password', 'HoTen', 'VaiTro', 'DanhMucDuocXemJSON']
+  };
+  Object.keys(sheets).forEach(name => {
+    let sh = ss.getSheetByName(name);
+    if (!sh) sh = ss.insertSheet(name);
+    if (sh.getLastRow() === 0) sh.appendRow(sheets[name]);
+  });
+}
+
+function getInitialData() {
+  setupDatabase();
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const shConfig = ss.getSheetByName('CauHinh');
+  if (shConfig.getLastRow() >= 2) {
+    const rawState = shConfig.getRange(2, 2).getValue();
+    if (rawState) {
+      try { return JSON.parse(rawState); } catch (e) {}
+    }
+  }
+  return null;
+}
+
+function syncFullStateToSheets(stateObj) {
+  setupDatabase();
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // 1. Lưu JSON tổng vào CauHinh để tốc độ tải trang tức thì
+  const shConfig = ss.getSheetByName('CauHinh');
+  shConfig.clearContents();
+  shConfig.appendRow(['Key', 'JSONValue']);
+  shConfig.appendRow(['APP_STATE', JSON.stringify(stateObj)]);
+
+  // 2. Đồng bộ bảng phẳng ra Sheet HoSo để dễ xem và lọc trực tiếp trên Google Sheets
+  const shHoSo = ss.getSheetByName('HoSo');
+  shHoSo.clearContents();
+  shHoSo.appendRow(['ID', 'SoHoSo', 'TenTaiLieu', 'DanhMucID', 'PhongBan', 'DuAn', 'NhaCungCap', 'NgayBanHanh', 'NgayKetThuc', 'GiaTri', 'TinhTrang', 'MoTa', 'FileName', 'FileType', 'NguoiPhuTrach', 'PreviewUrl']);
+  if (stateObj.documents && stateObj.documents.length > 0) {
+    const rows = stateObj.documents.map(d => [
+      d.id, d.code, d.title, d.categoryId, d.department, d.project, d.vendor,
+      d.issueDate, d.expiryDate, d.value || 0, d.status, d.description,
+      d.fileName, d.fileType, d.owner, d.drivePreviewUrl || ''
+    ]);
+    shHoSo.getRange(2, 1, rows.length, rows[0].length).setValues(rows);
+  }
+  return { ok: true };
+}
+
+function verifyDriveFolder(folderInput) {
+  try {
+    const idMatch = String(folderInput || '').match(/[-\w]{25,}/);
+    const folderId = idMatch ? idMatch[0] : String(folderInput || '').trim();
+    const folder = DriveApp.getFolderById(folderId);
+    return { ok: true, id: folderId, name: folder.getName() };
+  } catch (err) {
+    return { ok: false, message: 'Không tìm thấy thư mục hoặc chưa cấp quyền: ' + err.message };
+  }
+}
+
+function uploadFileToDrive(payload) {
+  try {
+    const idMatch = String(payload.folderId || '').match(/[-\w]{25,}/);
+    const folderId = idMatch ? idMatch[0] : String(payload.folderId || '').trim();
+    const folder = folderId ? DriveApp.getFolderById(folderId) : DriveApp.getRootFolder();
+    const bytes = Utilities.base64Decode(payload.base64Data);
+    const blob = Utilities.newBlob(bytes, payload.mimeType || 'application/octet-stream', payload.fileName);
+    const file = folder.createFile(blob);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    return {
+      ok: true,
+      fileId: file.getId(),
+      fileName: file.getName(),
+      previewUrl: 'https://drive.google.com/file/d/' + file.getId() + '/preview',
+      viewUrl: file.getUrl()
+    };
+  } catch (err) {
+    return { ok: false, message: err.message };
+  }
+}</pre>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MODAL 1: ADD / EDIT DOCUMENT (As in Video 02:30 & 07:03) -->
+  <div id="modalDocForm" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
+      <div class="px-5 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center">
+            <i class="fa-solid fa-file-circle-plus"></i>
+          </div>
+          <h3 id="modalDocFormTitle" class="text-base font-bold text-slate-900">Thêm Mới Hồ Sơ, Tài Liệu</h3>
+        </div>
+        <button id="btnCloseDocModal" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <form id="formDocument" class="p-5 overflow-y-auto custom-scrollbar space-y-4 text-xs">
+        <input type="hidden" id="docFormId" value="" />
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label for="docFormCode" class="block font-semibold text-slate-700 mb-1">Số hồ sơ / Mã văn bản *</label>
+            <input id="docFormCode" type="text" required placeholder="VD: HĐ-2026/089" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500" />
+          </div>
+          <div class="sm:col-span-2">
+            <label for="docFormTitle" class="block font-semibold text-slate-700 mb-1">Tên hồ sơ, tài liệu *</label>
+            <input id="docFormTitle" type="text" required placeholder="Nhập tên hợp đồng, biên bản nghiệm thu, văn bản..." class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label for="docFormCategory" class="block font-semibold text-slate-700 mb-1">Danh mục hồ sơ *</label>
+            <select id="docFormCategory" required class="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-emerald-500"></select>
+          </div>
+          <div>
+            <label for="docFormDepartment" class="block font-semibold text-slate-700 mb-1">Phòng ban *</label>
+            <select id="docFormDepartment" required class="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-emerald-500"></select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label for="docFormProject" class="block font-semibold text-slate-700 mb-1">Dự án</label>
+            <select id="docFormProject" class="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-emerald-500"></select>
+          </div>
+          <div>
+            <label for="docFormVendor" class="block font-semibold text-slate-700 mb-1">Nhà cung cấp / Đối tác</label>
+            <select id="docFormVendor" class="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-emerald-500"></select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label for="docFormIssueDate" class="block font-semibold text-slate-700 mb-1">Ngày ban hành *</label>
+            <input id="docFormIssueDate" type="date" required class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500" />
+          </div>
+          <div>
+            <label for="docFormExpiryDate" class="block font-semibold text-slate-700 mb-1">Ngày kết thúc / Hết hạn</label>
+            <input id="docFormExpiryDate" type="date" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500" />
+          </div>
+          <div>
+            <label for="docFormStatus" class="block font-semibold text-slate-700 mb-1">Tình trạng</label>
+            <select id="docFormStatus" class="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-emerald-500">
+              <option value="Đang hiệu lực">Đang hiệu lực</option>
+              <option value="Sắp đến hạn">Sắp đến hạn</option>
+              <option value="Kết thúc">Kết thúc</option>
+              <option value="Đã thanh lý">Đã thanh lý</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label for="docFormValue" class="block font-semibold text-slate-700 mb-1">Giá trị hợp đồng (VNĐ - Bỏ trống nếu không có)</label>
+            <input id="docFormValue" type="number" min="0" step="1000" placeholder="VD: 150000000" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500" />
+          </div>
+          <div>
+            <label for="docFormFileInput" class="block font-semibold text-slate-700 mb-1">Tải tệp đính kèm (PDF, Word, Excel, Ảnh)</label>
+            <input id="docFormFileInput" type="file" class="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100" />
+            <p id="docFormCurrentFileNote" class="text-[11px] text-slate-400 mt-1">Tệp sẽ được lưu vào thư mục Google Drive chỉ định.</p>
+          </div>
+        </div>
+
+        <div>
+          <label for="docFormDescription" class="block font-semibold text-slate-700 mb-1">Mô tả chi tiết nội dung văn bản</label>
+          <textarea id="docFormDescription" rows="3" placeholder="Ghi chú phạm vi công việc, điều khoản thanh toán hoặc nội dung chính..." class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500"></textarea>
+        </div>
+
+        <div class="pt-3 border-t border-slate-200 flex items-center justify-end gap-2">
+          <button type="button" id="btnCancelDocModal" class="px-4 py-2 rounded-xl border border-slate-200 font-semibold text-slate-600 hover:bg-slate-100">Hủy</button>
+          <button type="submit" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-sm transition">
+            <i class="fa-solid fa-floppy-disk mr-1.5"></i> Lưu Hồ Sơ
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 2: INSTANT PREVIEW & REPLACE FILE (As in Video 01:02 & 03:06) -->
+  <div id="modalPreviewDoc" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-4xl w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
+      <div class="px-5 py-3.5 bg-slate-900 text-white flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+          <span id="previewFileIconBadge" class="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-base shrink-0">
+            <i class="fa-solid fa-file-pdf text-rose-400"></i>
+          </span>
+          <div class="min-w-0">
+            <h3 id="previewDocTitle" class="text-sm font-bold truncate">Xem trước tài liệu</h3>
+            <p id="previewDocMeta" class="text-[11px] text-slate-300 truncate">Số HS: HĐ-01 • Danh mục: Hợp đồng</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <!-- Replace File Input Trigger -->
+          <label for="replaceFileInput" class="cursor-pointer px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs transition flex items-center gap-1.5">
+            <i class="fa-solid fa-cloud-arrow-up"></i> Thay thế tệp
+          </label>
+          <input id="replaceFileInput" type="file" class="hidden" />
+          <button id="btnSharePreviewDoc" class="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition flex items-center gap-1.5">
+            <i class="fa-solid fa-share-nodes"></i> Chia sẻ link
+          </button>
+          <button id="btnClosePreviewModal" class="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/10">
+            <i class="fa-solid fa-xmark text-lg"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Preview Body -->
+      <div class="p-5 overflow-y-auto custom-scrollbar flex-1 bg-slate-100 grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <!-- Document Viewer Frame (8 cols) -->
+        <div class="lg:col-span-8 bg-white rounded-xl border border-slate-200 shadow-inner min-h-[380px] flex flex-col overflow-hidden">
+          <div class="bg-slate-50 px-4 py-2 border-b border-slate-200 flex items-center justify-between text-xs text-slate-500">
+            <span id="previewFileNameBar" class="font-mono font-medium text-slate-700">hop-dong-dich-vu.pdf</span>
+            <span class="text-[11px] text-emerald-700 font-semibold"><i class="fa-brands fa-google-drive mr-1"></i>Xem trực tiếp không cần tải về</span>
+          </div>
+          <div id="previewContentViewport" class="flex-1 p-6 flex flex-col justify-between bg-white">
+            <!-- Populated dynamically with simulated document sheet or live uploaded preview -->
+          </div>
+        </div>
+
+        <!-- Document Metadata Sidebar (4 cols) -->
+        <div class="lg:col-span-4 bg-white rounded-xl border border-slate-200 p-4 flex flex-col justify-between text-xs space-y-4">
+          <div class="space-y-3">
+            <h4 class="font-bold text-slate-900 uppercase tracking-wider text-[11px] border-b border-slate-100 pb-2">Thông Tin Hồ Sơ Lưu Trữ</h4>
+            <div id="previewMetadataDetails" class="space-y-2.5">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+          <div class="pt-3 border-t border-slate-100 flex flex-col gap-2">
+            <button id="btnEditFromPreview" class="w-full py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold transition flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-pen-to-square"></i> Chỉnh sửa thông tin hồ sơ
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: LOGIN / ACCOUNT & ADD USER MODAL -->
+  <div id="modalLogin" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden">
+      <div class="px-5 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+        <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+          <i class="fa-solid fa-user-check text-emerald-600"></i> Đăng Nhập / Chuyển Đổi Tài Khoản
+        </h3>
+        <button id="btnCloseLoginModal" class="p-1 rounded-lg text-slate-400 hover:text-slate-700">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <form id="formLogin" class="p-5 space-y-3.5 text-xs">
+        <p class="text-slate-500">Thử đăng nhập bằng các tài khoản khác nhau để kiểm tra tính năng <strong>ẩn/hiện danh mục theo phân quyền</strong>:</p>
+        <div>
+          <label for="loginUsername" class="block font-semibold text-slate-700 mb-1">Tên đăng nhập</label>
+          <select id="loginUsername" class="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-medium"></select>
+        </div>
+        <div>
+          <label for="loginPassword" class="block font-semibold text-slate-700 mb-1">Mật khẩu (Mặc định: 123456)</label>
+          <input id="loginPassword" type="password" value="123456" class="w-full px-3 py-2 rounded-xl border border-slate-200" />
+        </div>
+        <div class="pt-2 flex justify-end gap-2">
+          <button type="button" id="btnCancelLogin" class="px-4 py-2 rounded-xl border border-slate-200 font-semibold text-slate-600">Đóng</button>
+          <button type="submit" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">Đăng nhập ngay</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 4: ADD NEW USER -->
+  <div id="modalAddUser" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden">
+      <div class="px-5 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+        <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+          <i class="fa-solid fa-user-plus text-emerald-600"></i> Thêm Tài Khoản Người Dùng Mới
+        </h3>
+        <button id="btnCloseAddUserModal" class="p-1 rounded-lg text-slate-400 hover:text-slate-700">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <form id="formAddUser" class="p-5 space-y-3.5 text-xs">
+        <div>
+          <label for="newUserUsername" class="block font-semibold text-slate-700 mb-1">Username *</label>
+          <input id="newUserUsername" type="text" required placeholder="VD: user3" class="w-full px-3 py-2 rounded-xl border border-slate-200" />
+        </div>
+        <div>
+          <label for="newUserFullName" class="block font-semibold text-slate-700 mb-1">Họ và tên / Bộ phận *</label>
+          <input id="newUserFullName" type="text" required placeholder="VD: Lê Hoàng (Kế toán)" class="w-full px-3 py-2 rounded-xl border border-slate-200" />
+        </div>
+        <div>
+          <label for="newUserPassword" class="block font-semibold text-slate-700 mb-1">Mật khẩu *</label>
+          <input id="newUserPassword" type="text" required value="123456" class="w-full px-3 py-2 rounded-xl border border-slate-200" />
+        </div>
+        <div class="pt-2 flex justify-end gap-2">
+          <button type="button" id="btnCancelAddUser" class="px-4 py-2 rounded-xl border border-slate-200 font-semibold text-slate-600">Hủy</button>
+          <button type="submit" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">Tạo tài khoản</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 5: SYSTEM CONFIG & EXPANDED PERMISSION POPUP (Matches User Screenshot Directly) -->
+  <div id="modalQuickSystem" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-4xl w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
+      <div class="px-6 py-4 bg-white border-b border-slate-200 flex items-center justify-between">
+        <h3 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2.5">
+          <i class="fa-solid fa-gears text-blue-600"></i>
+          <span>Cấu hình Hệ thống & Phân quyền</span>
+        </h3>
+        <button id="btnCloseQuickSystemModal" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="p-6 overflow-y-auto custom-scrollbar space-y-6 text-xs bg-slate-50/50">
+        <!-- Section 1: Locked Google Drive Folder -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+            <h4 class="text-sm font-bold text-slate-900">1. Cấu hình Thư mục Google Drive lưu trữ tệp</h4>
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+              <i class="fa-solid fa-lock text-[10px]"></i> Đã khóa bảo vệ (Chế độ Demo Khách hàng)
+            </span>
+          </div>
+          <p class="text-xs text-slate-500 mb-3">Đường dẫn URL thư mục Google Drive đã được cố định để khách trải nghiệm demo không thể tự ý thay đổi:</p>
+          <div class="flex flex-col sm:flex-row gap-2.5">
+            <div class="relative flex-1">
+              <input id="modalLockedDriveInput" type="text" readonly disabled value="https://drive.google.com/drive/folders/10-d91Cf-_xYpx54B0uR-Fzvc48Jcwl8-?usp=drive_link" class="w-full pl-3.5 pr-9 py-2.5 rounded-xl border border-slate-200 bg-slate-100 text-slate-500 font-mono text-xs cursor-not-allowed" />
+              <i class="fa-solid fa-lock absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            </div>
+            <button type="button" disabled class="px-5 py-2.5 rounded-xl bg-slate-300 text-slate-600 font-bold text-xs cursor-not-allowed flex items-center justify-center gap-1.5 shrink-0">
+              <i class="fa-solid fa-lock"></i> Đã khóa cố định
+            </button>
+          </div>
+        </div>
+
+        <!-- Section 2: Add New Document Category -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+          <h4 class="text-sm font-bold text-slate-900 mb-3">2. Thêm Danh mục hồ sơ mới</h4>
+          <div class="flex flex-col sm:flex-row gap-2.5">
+            <input id="modalNewCatName" type="text" placeholder="Tên danh mục (VD: Công văn - Quyết định)..." class="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs focus:outline-none focus:border-blue-500" />
+            <select id="modalNewCatIcon" class="sm:w-48 px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs focus:outline-none focus:border-blue-500">
+              <option value="fa-folder-open">fa-folder-open (Thư mục)</option>
+              <option value="fa-file-signature">fa-file-signature (Hợp đồng)</option>
+              <option value="fa-file-circle-plus">fa-file-circle-plus (Phụ lục)</option>
+              <option value="fa-clipboard-check">fa-clipboard-check (Nghiệm thu)</option>
+              <option value="fa-file-invoice-dollar">fa-file-invoice-dollar (Hóa đơn)</option>
+              <option value="fa-building-columns">fa-building-columns (Công văn)</option>
+              <option value="fa-scale-balanced">fa-scale-balanced (Pháp lý)</option>
+            </select>
+            <button id="btnModalAddCategory" type="button" class="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition shrink-0">
+              Thêm danh mục
+            </button>
+          </div>
+        </div>
+
+        <!-- Section 3: Expanded User Permission Cards -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h4 class="text-sm font-bold text-slate-900">3. Phân quyền Danh mục & Thao tác cho Người dùng (Users)</h4>
+              <p class="text-[11px] text-slate-500 mt-0.5">Thêm nhiều tài khoản mới và tích chọn danh mục hồ sơ được phép truy cập cho từng tài khoản:</p>
+            </div>
+            <span id="modalUserTotalBadge" class="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 font-bold text-[11px] border border-blue-200">0 tài khoản</span>
+          </div>
+
+          <!-- Quick Add Account Inside Modal -->
+          <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
+            <div class="sm:col-span-3">
+              <label class="block text-[11px] font-semibold text-slate-600 mb-1">Username *</label>
+              <input id="modalQuickUsername" type="text" placeholder="VD: user3" class="w-full px-2.5 py-2 rounded-lg border border-slate-200 bg-white" />
+            </div>
+            <div class="sm:col-span-4">
+              <label class="block text-[11px] font-semibold text-slate-600 mb-1">Tên hiển thị / Phòng ban *</label>
+              <input id="modalQuickFullName" type="text" placeholder="VD: Nhân viên Kế toán" class="w-full px-2.5 py-2 rounded-lg border border-slate-200 bg-white" />
+            </div>
+            <div class="sm:col-span-2">
+              <label class="block text-[11px] font-semibold text-slate-600 mb-1">Mật khẩu</label>
+              <input id="modalQuickPassword" type="text" value="123456" class="w-full px-2.5 py-2 rounded-lg border border-slate-200 bg-white font-mono" />
+            </div>
+            <div class="sm:col-span-3">
+              <button id="btnModalQuickAddUser" type="button" class="w-full py-2 px-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition">
+                <i class="fa-solid fa-user-plus mr-1"></i> + Thêm Tài Khoản
+              </button>
+            </div>
+          </div>
+
+          <!-- User Cards Container Inside Modal -->
+          <div id="modalUserPermissionCardsList" class="space-y-3">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <script>
+    // ==========================================
+    // INITIAL STATE (Matches Video Demo Structure)
+    // ==========================================
+    const STORAGE_KEY = 'DMS_WEBAPP_V1_STATE';
+
+    const IS_GAS_ENV = (typeof google !== 'undefined' && google.script && google.script.run);
+
+    const DEFAULT_STATE = {
+      brandTitle: 'DMS Webapp',
+      brandSubtitle: 'Hệ thống Quản lý Tài liệu, Hợp đồng & Văn bản (Google Sheets + Drive)',
+      currentUser: 'admin',
+      activeTab: 'DOCS', // DOCS | SYSTEM | APPSSCRIPT
+      selectedCategoryId: 'ALL',
+      selectedFileType: 'ALL', // ALL | PDF | WORD | EXCEL | IMAGE
+      onlyExpiring: false,
+      groupBy: 'NONE', // NONE | project | department | categoryId | owner
+      // KHÓA CỐ ĐỊNH ĐƯỜNG DẪN DRIVE CHO BẢN DEMO KHÁCH HÀNG
+      gasApiUrl: '', // Dán URL Web App Google Apps Script (https://script.google.com/macros/s/.../exec) khi chạy từ GitHub Pages
+      driveConfig: {
+        folderUrl: 'https://drive.google.com/drive/folders/10-d91Cf-_xYpx54B0uR-Fzvc48Jcwl8-?usp=drive_link',
+        folderId: '10-d91Cf-_xYpx54B0uR-Fzvc48Jcwl8-',
+        folderName: 'Kho_Ho_So_Demo_Khach_Hang',
+        locked: true,
+        verified: true
+      },
+      categories: [
+        { id: 'cat_hd', name: 'Hợp đồng kinh tế', icon: 'fa-file-signature', color: '#059669' },
+        { id: 'cat_pl', name: 'Phụ lục hợp đồng', icon: 'fa-file-circle-plus', color: '#2563eb' },
+        { id: 'cat_nt', name: 'Biên bản nghiệm thu', icon: 'fa-clipboard-check', color: '#16a34a' },
+        { id: 'cat_hdon', name: 'Hóa đơn - Chứng từ', icon: 'fa-file-invoice-dollar', color: '#d97706' },
+        { id: 'cat_cv', name: 'Công văn - Quyết định', icon: 'fa-building-columns', color: '#dc2626' },
+        { id: 'cat_plap', name: 'Hồ sơ pháp lý', icon: 'fa-scale-balanced', color: '#7c3aed' },
+        { id: 'cat_mkt', name: 'Marketing & Sự kiện', icon: 'fa-bullhorn', color: '#db2777' }
+      ],
+      departments: [
+        'Phòng Kinh doanh',
+        'Phòng Kế toán - Tài chính',
+        'Phòng Hành chính - Nhân sự',
+        'Phòng Kỹ thuật & Dự án',
+        'Phòng Marketing'
+      ],
+      projects: [
+        'Dự án ERP Chuyển đổi số 2026',
+        'Dự án Khu Công Nghiệp Long Thành',
+        'Dự án Cung ứng Thiết bị Y tế',
+        'Vận hành Nội bộ Doanh nghiệp'
+      ],
+      vendors: [
+        'Công ty CP Giải pháp Số VietTech',
+        'Tập đoàn Xây dựng Hòa Bình',
+        'Công ty TNHH Thiết bị Minh Phát',
+        'Công ty Truyền thông Creative Media'
+      ],
+      users: [
+        {
+          username: 'admin',
+          password: '123456',
+          fullName: 'Quản trị viên Hệ thống',
+          role: 'ADMIN',
+          allowedCategories: ['cat_hd', 'cat_pl', 'cat_nt', 'cat_hdon', 'cat_cv', 'cat_plap'],
+          permissions: { canView: true, canCreate: true, canEdit: true, canDelete: true }
+        },
+        {
+          username: 'user1',
+          password: '123456',
+          fullName: 'Nhân viên Hành chính',
+          role: 'USER',
+          allowedCategories: ['cat_hd', 'cat_nt', 'cat_cv'],
+          permissions: { canView: true, canCreate: true, canEdit: false, canDelete: false }
+        },
+        {
+          username: 'user2',
+          password: '123456',
+          fullName: 'Chuyên viên Kế toán - Hợp đồng',
+          role: 'USER',
+          allowedCategories: ['cat_hd', 'cat_pl', 'cat_nt', 'cat_hdon'],
+          permissions: { canView: true, canCreate: true, canEdit: true, canDelete: false }
+        },
+        {
+          username: 'user3',
+          password: '123456',
+          fullName: 'Trưởng phòng Kỹ thuật & Dự án',
+          role: 'MANAGER',
+          allowedCategories: ['cat_hd', 'cat_pl', 'cat_nt', 'cat_cv', 'cat_plap'],
+          permissions: { canView: true, canCreate: true, canEdit: true, canDelete: true }
+        },
+        {
+          username: 'khach_demo',
+          password: '123456',
+          fullName: 'Tài khoản Khách Xem Demo (Chỉ xem)',
+          role: 'USER',
+          allowedCategories: ['cat_hd', 'cat_pl', 'cat_nt', 'cat_hdon', 'cat_cv'],
+          permissions: { canView: true, canCreate: false, canEdit: false, canDelete: false }
+        }
+      ],
+      documents: [
+        {
+          id: 'DOC-1001',
+          code: 'HĐ-2026/001',
+          title: 'Hợp đồng triển khai phần mềm quản trị ERP giai đoạn 1',
+          categoryId: 'cat_hd',
+          department: 'Phòng Kỹ thuật & Dự án',
+          project: 'Dự án ERP Chuyển đổi số 2026',
+          vendor: 'Công ty CP Giải pháp Số VietTech',
+          issueDate: '2026-02-15',
+          expiryDate: '2026-11-10',
+          value: 450000000,
+          status: 'Sắp đến hạn',
+          description: 'Hợp đồng cung cấp bản quyền và triển khai phân hệ quản lý kho, tài liệu và kế toán.',
+          fileName: 'HD_TrienKhai_ERP_2026.pdf',
+          fileType: 'PDF',
+          owner: 'Quản trị viên (Admin)',
+          previewDataUrl: ''
+        },
+        {
+          id: 'DOC-1002',
+          code: 'PL-2026/012',
+          title: 'Phụ lục 01 - Bổ sung module ký số và lưu trữ Google Drive',
+          categoryId: 'cat_pl',
+          department: 'Phòng Kỹ thuật & Dự án',
+          project: 'Dự án ERP Chuyển đổi số 2026',
+          vendor: 'Công ty CP Giải pháp Số VietTech',
+          issueDate: '2026-05-10',
+          expiryDate: '2026-11-10',
+          value: 85000000,
+          status: 'Sắp đến hạn',
+          description: 'Phụ lục mở rộng dung lượng kết nối API Google Drive tự động phân quyền.',
+          fileName: 'PhuLuc_01_Module_Drive.docx',
+          fileType: 'WORD',
+          owner: 'User 1 (Chuyên viên Hợp đồng - Xem 2 mục)',
+          previewDataUrl: ''
+        },
+        {
+          id: 'DOC-1003',
+          code: 'NT-2026/045',
+          title: 'Biên bản nghiệm thu lắp đặt hạ tầng mạng Khu Công Nghiệp',
+          categoryId: 'cat_nt',
+          department: 'Phòng Kỹ thuật & Dự án',
+          project: 'Dự án Khu Công Nghiệp Long Thành',
+          vendor: 'Tập đoàn Xây dựng Hòa Bình',
+          issueDate: '2026-07-20',
+          expiryDate: '2027-07-20',
+          value: 320000000,
+          status: 'Đang hiệu lực',
+          description: 'Nghiệm thu hoàn thành 100% khối lượng hạng mục cáp quang và tủ rack trung tâm.',
+          fileName: 'BienBan_NghiemThu_LongThanh.pdf',
+          fileType: 'PDF',
+          owner: 'User 2 (Kế toán & Nghiệm thu - Xem 4 mục)',
+          previewDataUrl: ''
+        },
+        {
+          id: 'DOC-1004',
+          code: 'HĐơn-2026/108',
+          title: 'Bảng kê & Hóa đơn GTGT thiết bị y tế đợt 2',
+          categoryId: 'cat_hdon',
+          department: 'Phòng Kế toán - Tài chính',
+          project: 'Dự án Cung ứng Thiết bị Y tế',
+          vendor: 'Công ty TNHH Thiết bị Minh Phát',
+          issueDate: '2026-08-05',
+          expiryDate: '2026-10-15',
+          value: 680000000,
+          status: 'Đã quá hạn',
+          description: 'Hóa đơn điện tử và chứng từ thanh toán đợt 2 cần đối chiếu công nợ trước ngày 15/10/2026.',
+          fileName: 'BangKe_HoaDon_ThietBiYTe_Dot2.xlsx',
+          fileType: 'EXCEL',
+          owner: 'User 2 (Kế toán & Nghiệm thu - Xem 4 mục)',
+          previewDataUrl: ''
+        },
+        {
+          id: 'DOC-1005',
+          code: 'PLÝ-2026/009',
+          title: 'Giấy chứng nhận đăng ký doanh nghiệp & Hồ sơ năng lực 2026',
+          categoryId: 'cat_plap',
+          department: 'Phòng Hành chính - Nhân sự',
+          project: 'Vận hành Nội bộ Doanh nghiệp',
+          vendor: 'Công ty CP Giải pháp Số VietTech',
+          issueDate: '2026-01-10',
+          expiryDate: '2028-01-10',
+          value: 0,
+          status: 'Đang hiệu lực',
+          description: 'Bản scan màu Giấy phép kinh doanh cập nhật lần thứ 5.',
+          fileName: 'GPKD_HoSoNangLuc_Scan.png',
+          fileType: 'IMAGE',
+          owner: 'Quản trị viên (Admin)',
+          previewDataUrl: ''
+        },
+        {
+          id: 'DOC-1006',
+          code: 'MKT-2026/033',
+          title: 'Hợp đồng tổ chức sự kiện ra mắt sản phẩm Quý 4/2026',
+          categoryId: 'cat_mkt',
+          department: 'Phòng Marketing',
+          project: 'Vận hành Nội bộ Doanh nghiệp',
+          vendor: 'Công ty Truyền thông Creative Media',
+          issueDate: '2026-09-12',
+          expiryDate: '2026-11-05',
+          value: 195000000,
+          status: 'Sắp đến hạn',
+          description: 'Bao gồm thiết kế sân khấu, backdrop, livestream và truyền thông báo chí.',
+          fileName: 'HD_SuKien_RaMat_Q4.pdf',
+          fileType: 'PDF',
+          owner: 'Quản trị viên (Admin)',
+          previewDataUrl: ''
+        }
+      ]
+    };
+
+    let state = loadState();
+    let currentPreviewDocId = null;
+
+    const LOCKED_DRIVE_CONFIG = {
+      folderUrl: 'https://drive.google.com/drive/folders/10-d91Cf-_xYpx54B0uR-Fzvc48Jcwl8-?usp=drive_link',
+      folderId: '10-d91Cf-_xYpx54B0uR-Fzvc48Jcwl8-',
+      folderName: 'Kho_Ho_So_Demo_Khach_Hang',
+      locked: true,
+      verified: true
+    };
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          const merged = Object.assign({}, DEFAULT_STATE, parsed);
+          merged.driveConfig = Object.assign({}, LOCKED_DRIVE_CONFIG);
+          // Ensure every user object has permissions object
+          if (Array.isArray(merged.users)) {
+            merged.users.forEach(u => {
+              if (!u.permissions) {
+                u.permissions = u.role === 'ADMIN'
+                  ? { canView: true, canCreate: true, canEdit: true, canDelete: true }
+                  : { canView: true, canCreate: true, canEdit: false, canDelete: false };
+              }
+            });
+          }
+          return merged;
+        }
+      } catch (e) {
+        // Fallback to in-memory state if localStorage is blocked
+      }
+      return JSON.parse(JSON.stringify(DEFAULT_STATE));
+    }
+
+    function saveState() {
+      state.driveConfig = Object.assign({}, LOCKED_DRIVE_CONFIG);
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {
+        // Ignore storage error in restricted iframe
+      }
+      if (IS_GAS_ENV) {
+        try {
+          google.script.run.syncFullStateToSheets(state);
+        } catch (err) {}
+      } else if (state.gasApiUrl && state.gasApiUrl.startsWith('https://script.google.com/')) {
+        fetch(state.gasApiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'syncState', state: state })
+        }).catch(() => {});
+      }
+    }
+
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toastContainer');
+      const el = document.createElement('div');
+      const bgClass = type === 'success' ? 'bg-slate-900 text-white border-emerald-500' : 'bg-rose-600 text-white border-rose-300';
+      el.className = `pointer-events-auto px-4 py-3 rounded-xl shadow-lg border-l-4 ${bgClass} text-xs font-medium flex items-center gap-2.5 transition-all duration-300`;
+      el.innerHTML = `<i class="fa-solid ${type === 'success' ? 'fa-circle-check text-emerald-400' : 'fa-circle-exclamation text-white'} text-sm"></i><span>${message}</span>`;
+      container.appendChild(el);
+      setTimeout(() => {
+        el.style.opacity = '0';
+        setTimeout(() => el.remove(), 300);
+      }, 3200);
+    }
+
+    function formatCurrency(val) {
+      const num = Number(val) || 0;
+      if (num === 0) return '—';
+      return num.toLocaleString('vi-VN') + ' ₫';
+    }
+
+    function getCurrentUserObj() {
+      return state.users.find(u => u.username === state.currentUser) || state.users[0];
+    }
+
+    function getVisibleCategoriesForCurrentUser() {
+      const user = getCurrentUserObj();
+      if (user.role === 'ADMIN') return state.categories;
+      return state.categories.filter(c => user.allowedCategories.includes(c.id));
+    }
+
+    function getVisibleDocumentsForCurrentUser() {
+      const visibleCatIds = getVisibleCategoriesForCurrentUser().map(c => c.id);
+      return state.documents.filter(d => visibleCatIds.includes(d.categoryId));
+    }
+
+    // Check if document is expiring within 30 days or already expired (Ref date: 2026-10-28)
+    function getExpiryStatus(doc) {
+      if (!doc.expiryDate) return { code: 'NORMAL', label: doc.status || 'Đang hiệu lực', badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+      const today = new Date('2026-10-28T00:00:00');
+      const exp = new Date(doc.expiryDate + 'T00:00:00');
+      const diffDays = Math.ceil((exp - today) / (1000 * 60 * 60 * 24));
+
+      if (doc.status === 'Kết thúc' || doc.status === 'Đã thanh lý') {
+        return { code: 'CLOSED', label: doc.status, badgeClass: 'bg-slate-100 text-slate-600 border-slate-200' };
+      }
+      if (diffDays < 0) {
+        return { code: 'EXPIRED', label: `Quá hạn ${Math.abs(diffDays)} ngày`, badgeClass: 'bg-rose-50 text-rose-700 border-rose-200' };
+      }
+      if (diffDays <= 30) {
+        return { code: 'EXPIRING', label: `Còn ${diffDays} ngày`, badgeClass: 'bg-amber-50 text-amber-700 border-amber-200' };
+      }
+      return { code: 'ACTIVE', label: 'Đang hiệu lực', badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+    }
+
+    function detectFileTypeFromName(fileName) {
+      const lower = (fileName || '').toLowerCase();
+      if (lower.endsWith('.pdf')) return 'PDF';
+      if (lower.endsWith('.doc') || lower.endsWith('.docx')) return 'WORD';
+      if (lower.endsWith('.xls') || lower.endsWith('.xlsx') || lower.endsWith('.csv')) return 'EXCEL';
+      if (lower.endsWith('.png') || lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.webp')) return 'IMAGE';
+      return 'PDF';
+    }
+
+    function getFileTypeMeta(fileType) {
+      switch (fileType) {
+        case 'PDF': return { icon: 'fa-file-pdf', colorClass: 'text-rose-600 bg-rose-50 border-rose-200', label: 'PDF' };
+        case 'WORD': return { icon: 'fa-file-word', colorClass: 'text-blue-600 bg-blue-50 border-blue-200', label: 'Word' };
+        case 'EXCEL': return { icon: 'fa-file-excel', colorClass: 'text-emerald-600 bg-emerald-50 border-emerald-200', label: 'Excel' };
+        case 'IMAGE': return { icon: 'fa-file-image', colorClass: 'text-purple-600 bg-purple-50 border-purple-200', label: 'Hình ảnh' };
+        default: return { icon: 'fa-file-lines', colorClass: 'text-slate-600 bg-slate-100 border-slate-200', label: 'Khác' };
+      }
+    }
+
+    // ==========================================
+    // RENDERING FUNCTIONS
+    // ==========================================
+    function renderAll() {
+      renderHeaderAndSwitcher();
+      renderNavigationTabs();
+      renderSidebar();
+      renderFilterOptions();
+      renderDocumentList();
+      renderSystemConfigView();
+    }
+
+    function renderHeaderAndSwitcher() {
+      const select = document.getElementById('userSwitcherSelect');
+      select.innerHTML = state.users.map(u =>
+        `<option value="${u.username}" ${u.username === state.currentUser ? 'selected' : ''}>${u.fullName}</option>`
+      ).join('');
+
+      // Expiry Bell Count
+      const visibleDocs = getVisibleDocumentsForCurrentUser();
+      const expiringDocs = visibleDocs.filter(d => {
+        const st = getExpiryStatus(d);
+        return st.code === 'EXPIRED' || st.code === 'EXPIRING';
+      });
+      document.getElementById('expiryBadgeCount').textContent = expiringDocs.length;
+
+      const banner = document.getElementById('expiryAlertBanner');
+      if (state.onlyExpiring) {
+        banner.classList.remove('hidden');
+        document.getElementById('expiryBannerSubtext').textContent =
+          `Đang hiển thị ${expiringDocs.length} hồ sơ sắp hết hạn (trong vòng 30 ngày) hoặc đã quá hạn cần xử lý.`;
+      } else {
+        banner.classList.add('hidden');
+      }
+
+      document.getElementById('sidebarDriveFolderName').textContent = state.driveConfig.folderName;
+      document.getElementById('sidebarDriveFolderId').textContent = 'ID: ' + state.driveConfig.folderId;
+      document.getElementById('brandAppTitle').textContent = state.brandTitle || 'DMS Webapp';
+      document.getElementById('brandAppSubtitle').textContent = state.brandSubtitle || '';
+      const modeBadge = document.getElementById('runtimeModeBadge');
+      if (modeBadge) {
+        modeBadge.textContent = IS_GAS_ENV ? 'v1.0 • Google Sheets Live' : 'v1.0 • Chế độ Độc lập';
+      }
+      const bTitleIn = document.getElementById('inputBrandTitle');
+      const bSubIn = document.getElementById('inputBrandSubtitle');
+      if (bTitleIn && document.activeElement !== bTitleIn) bTitleIn.value = state.brandTitle || 'DMS Webapp';
+      if (bSubIn && document.activeElement !== bSubIn) bSubIn.value = state.brandSubtitle || '';
+    }
+
+    function renderNavigationTabs() {
+      const views = {
+        DOCS: document.getElementById('viewDocsContainer'),
+        SYSTEM: document.getElementById('viewSystemContainer'),
+        APPSSCRIPT: document.getElementById('viewAppsScriptContainer')
+      };
+      Object.keys(views).forEach(k => {
+        if (k === state.activeTab) views[k].classList.remove('hidden');
+        else views[k].classList.add('hidden');
+      });
+
+      const tabConfigs = [
+        { key: 'DOCS', desktop: 'navTabDocs', mobile: 'navTabDocsMobile' },
+        { key: 'SYSTEM', desktop: 'navTabSystem', mobile: 'navTabSystemMobile' },
+        { key: 'APPSSCRIPT', desktop: 'navTabAppsScript', mobile: 'navTabAppsScriptMobile' }
+      ];
+
+      tabConfigs.forEach(cfg => {
+        const dBtn = document.getElementById(cfg.desktop);
+        const mBtn = document.getElementById(cfg.mobile);
+        const active = state.activeTab === cfg.key;
+        dBtn.className = active
+          ? 'px-3.5 py-1.5 rounded-lg text-sm font-semibold transition flex items-center gap-2 bg-white text-emerald-700 shadow-sm'
+          : 'px-3.5 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-2 text-slate-600 hover:text-slate-900';
+        mBtn.className = active
+          ? 'flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold bg-white text-emerald-700 shadow-sm whitespace-nowrap'
+          : 'flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold text-slate-600 whitespace-nowrap';
+      });
+    }
+
+    function renderSidebar() {
+      const visibleCategories = getVisibleCategoriesForCurrentUser();
+      const visibleDocs = getVisibleDocumentsForCurrentUser();
+
+      // If current selectedCategoryId is not allowed for this user, reset to ALL
+      if (state.selectedCategoryId !== 'ALL' && !visibleCategories.some(c => c.id === state.selectedCategoryId)) {
+        state.selectedCategoryId = 'ALL';
+      }
+
+      const listEl = document.getElementById('categorySidebarList');
+      const allActive = state.selectedCategoryId === 'ALL';
+
+      let html = `
+        <button data-cat-id="ALL" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition ${allActive ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-700 hover:bg-slate-100'}">
+          <div class="flex items-center gap-2.5 truncate">
+            <span class="w-7 h-7 rounded-lg flex items-center justify-center ${allActive ? 'bg-white/20 text-white' : 'bg-emerald-50 text-emerald-600'}">
+              <i class="fa-solid fa-layer-group"></i>
+            </span>
+            <span class="truncate">Tổng tất cả hồ sơ</span>
+          </div>
+          <span class="px-2 py-0.5 rounded-full text-[11px] font-bold ${allActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}">${visibleDocs.length}</span>
+        </button>
+      `;
+
+      visibleCategories.forEach(cat => {
+        const count = visibleDocs.filter(d => d.categoryId === cat.id).length;
+        const isActive = state.selectedCategoryId === cat.id;
+        html += `
+          <button data-cat-id="${cat.id}" class="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition ${isActive ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-700 hover:bg-slate-100'}">
+            <div class="flex items-center gap-2.5 truncate">
+              <span class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style="background-color: ${isActive ? 'rgba(255,255,255,0.18)' : cat.color + '18'}; color: ${isActive ? '#ffffff' : cat.color}">
+                <i class="fa-solid ${cat.icon}"></i>
+              </span>
+              <span class="truncate">${cat.name}</span>
+            </div>
+            <span class="px-2 py-0.5 rounded-full text-[11px] font-bold ${isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}">${count}</span>
+          </button>
+        `;
+      });
+
+      listEl.innerHTML = html;
+      listEl.querySelectorAll('button[data-cat-id]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.selectedCategoryId = btn.getAttribute('data-cat-id');
+          saveState();
+          renderAll();
+        });
+      });
+
+      // File Type Filter Grid (Bottom of Sidebar)
+      const docsInSelectedCat = state.selectedCategoryId === 'ALL'
+        ? visibleDocs
+        : visibleDocs.filter(d => d.categoryId === state.selectedCategoryId);
+
+      const fileTypes = [
+        { id: 'ALL', label: 'Tất cả tệp', icon: 'fa-asterisk', color: 'text-slate-600' },
+        { id: 'PDF', label: 'Tệp PDF', icon: 'fa-file-pdf', color: 'text-rose-600' },
+        { id: 'WORD', label: 'File Word', icon: 'fa-file-word', color: 'text-blue-600' },
+        { id: 'EXCEL', label: 'File Excel', icon: 'fa-file-excel', color: 'text-emerald-600' },
+        { id: 'IMAGE', label: 'Hình ảnh', icon: 'fa-file-image', color: 'text-purple-600' }
+      ];
+
+      const ftGrid = document.getElementById('fileTypeFilterGrid');
+      ftGrid.innerHTML = fileTypes.map(ft => {
+        const count = ft.id === 'ALL'
+          ? docsInSelectedCat.length
+          : docsInSelectedCat.filter(d => d.fileType === ft.id).length;
+        const active = state.selectedFileType === ft.id;
+        return `
+          <button data-ft-id="${ft.id}" class="${ft.id === 'ALL' ? 'col-span-2' : ''} flex items-center justify-between px-2.5 py-2 rounded-xl border text-xs font-medium transition ${active ? 'border-emerald-600 bg-emerald-50/80 text-emerald-900 font-semibold' : 'border-slate-200 bg-slate-50/50 text-slate-600 hover:bg-slate-100'}">
+            <span class="flex items-center gap-1.5 truncate">
+              <i class="fa-solid ${ft.icon} ${ft.color}"></i>
+              <span class="truncate">${ft.label}</span>
+            </span>
+            <span class="text-[11px] font-bold px-1.5 py-0.2 rounded-md bg-white border border-slate-200 text-slate-700">${count}</span>
+          </button>
+        `;
+      }).join('');
+
+      ftGrid.querySelectorAll('button[data-ft-id]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.selectedFileType = btn.getAttribute('data-ft-id');
+          document.getElementById('activeFileTypeLabel').textContent = state.selectedFileType === 'ALL' ? 'Tất cả' : state.selectedFileType;
+          saveState();
+          renderAll();
+        });
+      });
+    }
+
+    function populateSelectWithPreserve(selectId, items, allLabel) {
+      const sel = document.getElementById(selectId);
+      const currentVal = sel.value || 'ALL';
+      sel.innerHTML = `<option value="ALL">${allLabel}</option>` +
+        items.map(item => `<option value="${item}">${item}</option>`).join('');
+      if (items.includes(currentVal)) sel.value = currentVal;
+      else sel.value = 'ALL';
+    }
+
+    function renderFilterOptions() {
+      populateSelectWithPreserve('filterDepartment', state.departments, 'Tất cả phòng ban');
+      populateSelectWithPreserve('filterProject', state.projects, 'Tất cả dự án');
+      populateSelectWithPreserve('filterVendor', state.vendors, 'Tất cả nhà cung cấp');
+      const owners = Array.from(new Set(state.documents.map(d => d.owner)));
+      populateSelectWithPreserve('filterOwner', owners, 'Tất cả người nhập');
+      document.getElementById('groupBySelect').value = state.groupBy || 'NONE';
+    }
+
+    function getFilteredDocuments() {
+      const visibleDocs = getVisibleDocumentsForCurrentUser();
+      const q = (document.getElementById('filterSearchInput').value || '').trim().toLowerCase();
+      const dept = document.getElementById('filterDepartment').value;
+      const proj = document.getElementById('filterProject').value;
+      const vendor = document.getElementById('filterVendor').value;
+      const owner = document.getElementById('filterOwner').value;
+      const dateFrom = document.getElementById('filterDateFrom').value;
+      const dateTo = document.getElementById('filterDateTo').value;
+
+      return visibleDocs.filter(doc => {
+        if (state.selectedCategoryId !== 'ALL' && doc.categoryId !== state.selectedCategoryId) return false;
+        if (state.selectedFileType !== 'ALL' && doc.fileType !== state.selectedFileType) return false;
+        if (state.onlyExpiring) {
+          const st = getExpiryStatus(doc);
+          if (st.code !== 'EXPIRED' && st.code !== 'EXPIRING') return false;
+        }
+        if (dept !== 'ALL' && doc.department !== dept) return false;
+        if (proj !== 'ALL' && doc.project !== proj) return false;
+        if (vendor !== 'ALL' && doc.vendor !== vendor) return false;
+        if (owner !== 'ALL' && doc.owner !== owner) return false;
+        if (dateFrom && doc.issueDate < dateFrom) return false;
+        if (dateTo && doc.issueDate > dateTo) return false;
+        if (q) {
+          const hay = `${doc.code} ${doc.title} ${doc.description} ${doc.vendor} ${doc.project}`.toLowerCase();
+          if (!hay.includes(q)) return false;
+        }
+        return true;
+      });
+    }
+
+    function renderDocumentRow(doc) {
+      const cat = state.categories.find(c => c.id === doc.categoryId) || { name: 'Khác', icon: 'fa-folder', color: '#64748b' };
+      const exp = getExpiryStatus(doc);
+      const ft = getFileTypeMeta(doc.fileType);
+
+      return `
+        <tr class="hover:bg-slate-50/90 transition group">
+          <td class="py-3.5 px-4 align-top">
+            <div class="flex items-start gap-2.5">
+              <button data-preview-id="${doc.id}" class="mt-0.5 text-left group-hover:text-emerald-700 transition">
+                <span class="inline-block font-mono text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200 mb-1">${doc.code}</span>
+                <p class="font-semibold text-slate-900 group-hover:text-emerald-700 leading-snug">${doc.title}</p>
+                <p class="text-[11px] text-slate-400 line-clamp-1 mt-0.5">${doc.description || 'Không có mô tả chi tiết'}</p>
+              </button>
+            </div>
+          </td>
+          <td class="py-3.5 px-3 align-top">
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold" style="background-color: ${cat.color}15; color: ${cat.color}">
+              <i class="fa-solid ${cat.icon}"></i>
+              <span>${cat.name}</span>
+            </span>
+          </td>
+          <td class="py-3.5 px-3 align-top">
+            <p class="font-medium text-slate-800">${doc.department}</p>
+            <p class="text-[11px] text-slate-500 mt-0.5"><i class="fa-solid fa-diagram-project mr-1 text-slate-400"></i>${doc.project || '—'}</p>
+          </td>
+          <td class="py-3.5 px-3 align-top">
+            <p class="text-slate-700 font-medium">${doc.vendor || '—'}</p>
+            <p class="text-[11px] text-slate-400 mt-0.5"><i class="fa-regular fa-user mr-1"></i>${doc.owner}</p>
+          </td>
+          <td class="py-3.5 px-3 align-top whitespace-nowrap">
+            <div class="text-[11px] text-slate-600">BH: <strong>${doc.issueDate || '—'}</strong></div>
+            <div class="text-[11px] text-slate-600 mt-0.5">KT: <strong>${doc.expiryDate || '—'}</strong></div>
+            <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${exp.badgeClass}">${exp.label}</span>
+          </td>
+          <td class="py-3.5 px-3 align-top text-right font-semibold text-slate-800 whitespace-nowrap">
+            ${formatCurrency(doc.value)}
+          </td>
+          <td class="py-3.5 px-3 align-top">
+            <button data-preview-id="${doc.id}" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border ${ft.colorClass} text-[11px] font-semibold hover:opacity-90 transition" title="Nhấn để xem trực tiếp không cần tải file">
+              <i class="fa-solid ${ft.icon} text-sm"></i>
+              <span class="max-w-[115px] truncate">${doc.fileName}</span>
+            </button>
+          </td>
+          <td class="py-3.5 px-4 align-top text-right whitespace-nowrap">
+            <div class="inline-flex items-center gap-1">
+              <button data-preview-id="${doc.id}" class="p-1.5 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 transition" title="Xem nhanh hồ sơ">
+                <i class="fa-solid fa-eye"></i>
+              </button>
+              ${(getCurrentUserObj().role === 'ADMIN' || (getCurrentUserObj().permissions && getCurrentUserObj().permissions.canEdit)) ? `
+              <button data-edit-id="${doc.id}" class="p-1.5 rounded-lg text-slate-500 hover:text-amber-600 hover:bg-amber-50 transition" title="Chỉnh sửa hồ sơ">
+                <i class="fa-solid fa-pen-to-square"></i>
+              </button>` : ''}
+              ${(getCurrentUserObj().role === 'ADMIN' || (getCurrentUserObj().permissions && getCurrentUserObj().permissions.canDelete)) ? `
+              <button data-delete-id="${doc.id}" class="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition" title="Xóa hồ sơ">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>` : ''}
+            </div>
+          </td>
+        </tr>
+      `;
+    }
+
+    function renderDocumentList() {
+      const filtered = getFilteredDocuments();
+      const user = getCurrentUserObj();
+      const visibleCats = getVisibleCategoriesForCurrentUser();
+
+      // Update Category Header & Total Contract Value
+      const activeCat = state.categories.find(c => c.id === state.selectedCategoryId);
+      const badgeEl = document.getElementById('currentCategoryBadge');
+      const titleEl = document.getElementById('currentCategoryTitle');
+
+      if (activeCat) {
+        badgeEl.style.backgroundColor = activeCat.color;
+        badgeEl.innerHTML = `<i class="fa-solid ${activeCat.icon}"></i>`;
+        titleEl.textContent = activeCat.name;
+      } else {
+        badgeEl.style.backgroundColor = '#059669';
+        badgeEl.innerHTML = `<i class="fa-solid fa-layer-group"></i>`;
+        titleEl.textContent = 'Tổng tất cả các hồ sơ';
+      }
+
+      document.getElementById('currentFilterSummary').textContent =
+        `Hiển thị ${filtered.length} hồ sơ • Tài khoản: ${user.fullName} (Được xem ${visibleCats.length}/${state.categories.length} danh mục)`;
+
+      const totalVal = filtered.reduce((acc, d) => acc + (Number(d.value) || 0), 0);
+      document.getElementById('totalContractValueDisplay').textContent = totalVal.toLocaleString('vi-VN') + ' ₫';
+
+      const tbody = document.getElementById('documentTableBody');
+      if (filtered.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="8" class="py-12 text-center text-slate-400">
+              <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3 text-xl">
+                <i class="fa-regular fa-folder-open"></i>
+              </div>
+              <p class="text-sm font-semibold text-slate-600">Không tìm thấy hồ sơ, tài liệu nào phù hợp</p>
+              <p class="text-xs text-slate-400 mt-1">Hãy thử đặt lại bộ lọc hoặc nhấn "Thêm mới hồ sơ" để tải tệp lên.</p>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      if (state.groupBy === 'NONE') {
+        tbody.innerHTML = filtered.map(doc => renderDocumentRow(doc)).join('');
+      } else {
+        // Grouped rendering (As in Video 01:58)
+        const groups = {};
+        filtered.forEach(doc => {
+          let keyLabel = doc[state.groupBy] || 'Chưa phân loại';
+          if (state.groupBy === 'categoryId') {
+            const c = state.categories.find(x => x.id === doc.categoryId);
+            keyLabel = c ? c.name : 'Danh mục khác';
+          }
+          if (!groups[keyLabel]) groups[keyLabel] = [];
+          groups[keyLabel].push(doc);
+        });
+
+        let html = '';
+        Object.keys(groups).forEach(groupName => {
+          const items = groups[groupName];
+          const groupSum = items.reduce((s, x) => s + (Number(x.value) || 0), 0);
+          html += `
+            <tr class="bg-slate-100/90 border-y border-slate-200">
+              <td colspan="8" class="py-2.5 px-4 text-xs font-bold text-slate-800">
+                <div class="flex items-center justify-between">
+                  <span><i class="fa-solid fa-folder-tree text-emerald-600 mr-2"></i>${groupName} <span class="ml-1.5 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px]">${items.length} hồ sơ</span></span>
+                  <span class="text-slate-500 font-semibold">Tổng nhóm: <strong class="text-emerald-700">${formatCurrency(groupSum)}</strong></span>
+                </div>
+              </td>
+            </tr>
+          `;
+          html += items.map(doc => renderDocumentRow(doc)).join('');
+        });
+        tbody.innerHTML = html;
+      }
+
+      // Attach Row Action Listeners
+      tbody.querySelectorAll('button[data-preview-id]').forEach(btn => {
+        btn.addEventListener('click', () => openPreviewModal(btn.getAttribute('data-preview-id')));
+      });
+      tbody.querySelectorAll('button[data-edit-id]').forEach(btn => {
+        btn.addEventListener('click', () => openDocModal(btn.getAttribute('data-edit-id')));
+      });
+      tbody.querySelectorAll('button[data-delete-id]').forEach(btn => {
+        btn.addEventListener('click', () => deleteDocument(btn.getAttribute('data-delete-id')));
+      });
+    }
+
+    // ==========================================
+    // SYSTEM CONFIG & PERMISSION MATRIX VIEW
+    // ==========================================
+    function renderSystemConfigView() {
+      const user = getCurrentUserObj();
+      document.getElementById('systemRoleNotice').textContent = `Đang đăng nhập: ${user.fullName}`;
+
+      // 1. Categories List in System Tab
+      const catListEl = document.getElementById('systemCategoryList');
+      catListEl.innerHTML = state.categories.map(cat => {
+        const count = state.documents.filter(d => d.categoryId === cat.id).length;
+        return `
+          <div class="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition text-xs">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <span class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style="background-color: ${cat.color}18; color: ${cat.color}">
+                <i class="fa-solid ${cat.icon}"></i>
+              </span>
+              <div class="min-w-0">
+                <p class="font-semibold text-slate-900 truncate">${cat.name}</p>
+                <p class="text-[11px] text-slate-400">${count} tài liệu đang lưu</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-1 shrink-0">
+              <button data-sys-edit-cat="${cat.id}" class="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50" title="Sửa icon & màu sắc">
+                <i class="fa-solid fa-pen"></i>
+              </button>
+              <button data-sys-del-cat="${cat.id}" class="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50" title="Xóa danh mục">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      catListEl.querySelectorAll('button[data-sys-edit-cat]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const catId = btn.getAttribute('data-sys-edit-cat');
+          const cat = state.categories.find(c => c.id === catId);
+          if (!cat) return;
+          document.getElementById('editCategoryId').value = cat.id;
+          document.getElementById('inputCategoryName').value = cat.name;
+          document.getElementById('inputCategoryIcon').value = cat.icon;
+          document.getElementById('inputCategoryColor').value = cat.color;
+          document.getElementById('btnCancelEditCategory').classList.remove('hidden');
+          document.getElementById('btnSaveCategory').innerHTML = `<i class="fa-solid fa-check mr-1"></i> Cập nhật`;
+        });
+      });
+
+      catListEl.querySelectorAll('button[data-sys-del-cat]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const catId = btn.getAttribute('data-sys-del-cat');
+          if (state.categories.length <= 1) {
+            showToast('Phải giữ lại ít nhất 1 danh mục hệ thống!', 'error');
+            return;
+          }
+          state.categories = state.categories.filter(c => c.id !== catId);
+          saveState();
+          renderAll();
+          showToast('Đã xóa danh mục hồ sơ!');
+        });
+      });
+
+      // 2. Master Attributes Lists (Departments, Projects, Vendors)
+      renderMasterAttributeList('systemDepartmentList', state.departments, 'department', 'departments');
+      renderMasterAttributeList('systemProjectList', state.projects, 'project', 'projects');
+      renderMasterAttributeList('systemVendorList', state.vendors, 'vendor', 'vendors');
+
+      // 3. User Permission Matrix
+      const headRow = document.getElementById('permissionTableHeadRow');
+      headRow.innerHTML = `
+        <th class="py-3 px-3">Tài khoản User</th>
+        <th class="py-3 px-3">Mật khẩu</th>
+        ${state.categories.map(c => `<th class="py-3 px-2 text-center"><i class="fa-solid ${c.icon} mr-1" style="color:${c.color}"></i>${c.name}</th>`).join('')}
+        <th class="py-3 px-3 text-center">Tỷ lệ quyền</th>
+      `;
+
+      const permBody = document.getElementById('permissionTableBody');
+      permBody.innerHTML = state.users.map(u => {
+        const isAdmin = u.role === 'ADMIN';
+        const allowedCount = isAdmin ? state.categories.length : u.allowedCategories.filter(id => state.categories.some(c => c.id === id)).length;
+        return `
+          <tr class="hover:bg-slate-50">
+            <td class="py-3 px-3 font-semibold text-slate-900">
+              <div>${u.fullName}</div>
+              <div class="text-[11px] text-slate-400 font-mono">@${u.username}</div>
+            </td>
+            <td class="py-3 px-3 font-mono text-slate-600">${u.password}</td>
+            ${state.categories.map(c => {
+              const checked = isAdmin || u.allowedCategories.includes(c.id);
+              return `
+                <td class="py-3 px-2 text-center">
+                  <input type="checkbox" data-perm-user="${u.username}" data-perm-cat="${c.id}" ${checked ? 'checked' : ''} ${isAdmin ? 'disabled' : ''} class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer" />
+                </td>
+              `;
+            }).join('')}
+            <td class="py-3 px-3 text-center">
+              <span class="px-2.5 py-1 rounded-full text-[11px] font-bold ${isAdmin ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'}">
+                ${allowedCount}/${state.categories.length} danh mục
+              </span>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      permBody.querySelectorAll('input[type="checkbox"][data-perm-user]').forEach(chk => {
+        chk.addEventListener('change', () => {
+          const uname = chk.getAttribute('data-perm-user');
+          const catId = chk.getAttribute('data-perm-cat');
+          const targetUser = state.users.find(u => u.username === uname);
+          if (!targetUser || targetUser.role === 'ADMIN') return;
+          if (chk.checked) {
+            if (!targetUser.allowedCategories.includes(catId)) targetUser.allowedCategories.push(catId);
+          } else {
+            targetUser.allowedCategories = targetUser.allowedCategories.filter(x => x !== catId);
+          }
+          saveState();
+          renderAll();
+          showToast(`Đã cập nhật phân quyền danh mục cho ${targetUser.username}!`);
+        });
+      });
+
+      renderExpandedUserPermissionCards();
+    }
+
+    function buildUserPermissionCardsHtml(usersList, prefix) {
+      return usersList.map(u => {
+        const isAdmin = u.role === 'ADMIN';
+        const roleLabel = u.role === 'ADMIN' ? 'Admin' : (u.role === 'MANAGER' ? 'Quản lý' : 'User');
+        const roleBadgeClass = u.role === 'ADMIN'
+          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+          : (u.role === 'MANAGER' ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-blue-50 text-blue-700 border-blue-200');
+        const perms = u.permissions || { canView: true, canCreate: true, canEdit: false, canDelete: false };
+
+        return `
+          <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs space-y-3 hover:border-blue-300 transition">
+            <div class="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
+              <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 font-bold flex items-center justify-center text-xs">
+                  ${u.username.slice(0, 2).toUpperCase()}
+                </div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="font-bold text-slate-900 text-xs sm:text-sm">${u.fullName} (${u.username} - ${roleLabel})</span>
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ${roleBadgeClass}">${roleLabel}</span>
+                  </div>
+                  <div class="text-[11px] text-slate-400">Được phép xem ${isAdmin ? state.categories.length : u.allowedCategories.filter(cid => state.categories.some(c => c.id === cid)).length}/${state.categories.length} danh mục hồ sơ</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-1.5">
+                ${!isAdmin ? `
+                  <button type="button" data-select-all-cats="${u.username}" class="px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-600 text-[11px] font-semibold" title="Chọn hoặc bỏ chọn tất cả danh mục">
+                    Chọn tất cả
+                  </button>
+                  <button type="button" data-del-user="${u.username}" class="p-1.5 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 text-[11px]" title="Xóa tài khoản này">
+                    <i class="fa-solid fa-trash-can"></i>
+                  </button>
+                ` : ''}
+                <button type="button" data-save-user-perm="${u.username}" class="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition shadow-xs">
+                  Lưu quyền
+                </button>
+              </div>
+            </div>
+
+            <!-- Category Access Checkboxes -->
+            <div>
+              <div class="text-[11px] font-semibold text-slate-500 mb-2">Danh mục hồ sơ được phép truy cập:</div>
+              <div class="flex flex-wrap gap-x-4 gap-y-2">
+                ${state.categories.map(cat => {
+                  const isChecked = isAdmin || u.allowedCategories.includes(cat.id);
+                  return `
+                    <label class="inline-flex items-center gap-1.5 cursor-pointer select-none text-xs text-slate-700 hover:text-slate-900">
+                      <input type="checkbox" data-card-perm-user="${u.username}" data-card-perm-cat="${cat.id}" ${isChecked ? 'checked' : ''} ${isAdmin ? 'disabled' : ''} class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer" />
+                      <span>${cat.name}</span>
+                    </label>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+
+            <!-- Granular Action Permissions & Password Row -->
+            <div class="pt-2.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-[11px]">
+              <div class="flex flex-wrap items-center gap-3">
+                <span class="font-semibold text-slate-500">Quyền thao tác:</span>
+                <label class="inline-flex items-center gap-1 cursor-pointer">
+                  <input type="checkbox" data-action-user="${u.username}" data-action-key="canView" ${isAdmin || perms.canView ? 'checked' : ''} ${isAdmin ? 'disabled' : ''} class="w-3.5 h-3.5 rounded text-emerald-600" />
+                  <span>Xem & Tải file</span>
+                </label>
+                <label class="inline-flex items-center gap-1 cursor-pointer">
+                  <input type="checkbox" data-action-user="${u.username}" data-action-key="canCreate" ${isAdmin || perms.canCreate ? 'checked' : ''} ${isAdmin ? 'disabled' : ''} class="w-3.5 h-3.5 rounded text-emerald-600" />
+                  <span>Thêm hồ sơ</span>
+                </label>
+                <label class="inline-flex items-center gap-1 cursor-pointer">
+                  <input type="checkbox" data-action-user="${u.username}" data-action-key="canEdit" ${isAdmin || perms.canEdit ? 'checked' : ''} ${isAdmin ? 'disabled' : ''} class="w-3.5 h-3.5 rounded text-emerald-600" />
+                  <span>Sửa & Thay tệp</span>
+                </label>
+                <label class="inline-flex items-center gap-1 cursor-pointer">
+                  <input type="checkbox" data-action-user="${u.username}" data-action-key="canDelete" ${isAdmin || perms.canDelete ? 'checked' : ''} ${isAdmin ? 'disabled' : ''} class="w-3.5 h-3.5 rounded text-emerald-600" />
+                  <span>Xóa hồ sơ</span>
+                </label>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span class="text-slate-400">Mật khẩu:</span>
+                <input type="text" data-pwd-user="${u.username}" value="${u.password}" class="w-20 px-2 py-0.5 rounded border border-slate-200 font-mono text-[11px] text-slate-700 bg-slate-50" />
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function bindPermissionCardEvents(containerEl) {
+      if (!containerEl) return;
+
+      containerEl.querySelectorAll('input[data-card-perm-user]').forEach(chk => {
+        chk.addEventListener('change', () => {
+          const uname = chk.getAttribute('data-card-perm-user');
+          const catId = chk.getAttribute('data-card-perm-cat');
+          const u = state.users.find(x => x.username === uname);
+          if (!u || u.role === 'ADMIN') return;
+          if (chk.checked) {
+            if (!u.allowedCategories.includes(catId)) u.allowedCategories.push(catId);
+          } else {
+            u.allowedCategories = u.allowedCategories.filter(id => id !== catId);
+          }
+          saveState();
+        });
+      });
+
+      containerEl.querySelectorAll('input[data-action-user]').forEach(chk => {
+        chk.addEventListener('change', () => {
+          const uname = chk.getAttribute('data-action-user');
+          const actionKey = chk.getAttribute('data-action-key');
+          const u = state.users.find(x => x.username === uname);
+          if (!u || u.role === 'ADMIN') return;
+          if (!u.permissions) u.permissions = { canView: true, canCreate: true, canEdit: false, canDelete: false };
+          u.permissions[actionKey] = chk.checked;
+          saveState();
+        });
+      });
+
+      containerEl.querySelectorAll('input[data-pwd-user]').forEach(inp => {
+        inp.addEventListener('change', () => {
+          const uname = inp.getAttribute('data-pwd-user');
+          const u = state.users.find(x => x.username === uname);
+          if (!u) return;
+          u.password = inp.value.trim() || '123456';
+          saveState();
+        });
+      });
+
+      containerEl.querySelectorAll('button[data-select-all-cats]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const uname = btn.getAttribute('data-select-all-cats');
+          const u = state.users.find(x => x.username === uname);
+          if (!u || u.role === 'ADMIN') return;
+          const allIds = state.categories.map(c => c.id);
+          if (u.allowedCategories.length === allIds.length) {
+            u.allowedCategories = [];
+          } else {
+            u.allowedCategories = allIds.slice();
+          }
+          saveState();
+          renderAll();
+          showToast(`Đã cập nhật nhanh danh mục cho tài khoản ${u.username}!`);
+        });
+      });
+
+      containerEl.querySelectorAll('button[data-del-user]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const uname = btn.getAttribute('data-del-user');
+          if (uname === 'admin') return;
+          state.users = state.users.filter(x => x.username !== uname);
+          if (state.currentUser === uname) state.currentUser = 'admin';
+          saveState();
+          renderAll();
+          showToast(`Đã xóa tài khoản @${uname}!`);
+        });
+      });
+
+      containerEl.querySelectorAll('button[data-save-user-perm]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const uname = btn.getAttribute('data-save-user-perm');
+          saveState();
+          renderAll();
+          showToast(`Đã lưu phân quyền cho tài khoản "${uname}"!`);
+        });
+      });
+    }
+
+    function renderExpandedUserPermissionCards() {
+      const searchEl = document.getElementById('searchUserPermissionInput');
+      const q = (searchEl ? searchEl.value : '').trim().toLowerCase();
+      const filteredUsers = state.users.filter(u => {
+        if (!q) return true;
+        return `${u.username} ${u.fullName} ${u.role}`.toLowerCase().includes(q);
+      });
+
+      const sysContainer = document.getElementById('expandedUserPermissionCards');
+      if (sysContainer) {
+        sysContainer.innerHTML = buildUserPermissionCardsHtml(filteredUsers, 'sys');
+        bindPermissionCardEvents(sysContainer);
+      }
+
+      const modalContainer = document.getElementById('modalUserPermissionCardsList');
+      if (modalContainer) {
+        modalContainer.innerHTML = buildUserPermissionCardsHtml(state.users, 'modal');
+        bindPermissionCardEvents(modalContainer);
+      }
+
+      const badge = document.getElementById('modalUserTotalBadge');
+      if (badge) badge.textContent = `${state.users.length} tài khoản được phân quyền`;
+    }
+
+    function renderMasterAttributeList(containerId, listArray, docFieldKey, stateArrayKey) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = listArray.map((item, idx) => {
+        const count = state.documents.filter(d => d[docFieldKey] === item).length;
+        return `
+          <div class="flex items-center justify-between p-2 rounded-xl border border-slate-100 bg-slate-50/70 hover:bg-white hover:border-slate-200 transition">
+            <div class="min-w-0 pr-2">
+              <p class="font-medium text-slate-800 truncate">${item}</p>
+              <p class="text-[10px] text-slate-400">${count} hồ sơ</p>
+            </div>
+            <button data-del-attr-key="${stateArrayKey}" data-del-attr-idx="${idx}" class="p-1 text-slate-400 hover:text-rose-600 rounded" title="Xóa">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+        `;
+      }).join('');
+
+      container.querySelectorAll('button[data-del-attr-key]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const key = btn.getAttribute('data-del-attr-key');
+          const idx = Number(btn.getAttribute('data-del-attr-idx'));
+          state[key].splice(idx, 1);
+          saveState();
+          renderAll();
+          showToast('Đã xóa mục cấu hình!');
+        });
+      });
+    }
+
+    // ==========================================
+    // DOCUMENT CRUD & PREVIEW LOGIC
+    // ==========================================
+    function openDocModal(editDocId = null) {
+      const modal = document.getElementById('modalDocForm');
+      const visibleCats = getVisibleCategoriesForCurrentUser();
+
+      // Populate form dropdowns
+      document.getElementById('docFormCategory').innerHTML = visibleCats.map(c =>
+        `<option value="${c.id}">${c.name}</option>`
+      ).join('');
+      document.getElementById('docFormDepartment').innerHTML = state.departments.map(d =>
+        `<option value="${d}">${d}</option>`
+      ).join('');
+      document.getElementById('docFormProject').innerHTML = `<option value="">-- Chọn dự án --</option>` +
+        state.projects.map(p => `<option value="${p}">${p}</option>`).join('');
+      document.getElementById('docFormVendor').innerHTML = `<option value="">-- Chọn nhà cung cấp --</option>` +
+        state.vendors.map(v => `<option value="${v}">${v}</option>`).join('');
+
+      document.getElementById('docFormFileInput').value = '';
+
+      if (editDocId) {
+        const doc = state.documents.find(d => d.id === editDocId);
+        if (!doc) return;
+        document.getElementById('modalDocFormTitle').textContent = 'Chỉnh Sửa Thông Tin Hồ Sơ';
+        document.getElementById('docFormId').value = doc.id;
+        document.getElementById('docFormCode').value = doc.code;
+        document.getElementById('docFormTitle').value = doc.title;
+        document.getElementById('docFormCategory').value = doc.categoryId;
+        document.getElementById('docFormDepartment').value = doc.department;
+        document.getElementById('docFormProject').value = doc.project || '';
+        document.getElementById('docFormVendor').value = doc.vendor || '';
+        document.getElementById('docFormIssueDate').value = doc.issueDate || '';
+        document.getElementById('docFormExpiryDate').value = doc.expiryDate || '';
+        document.getElementById('docFormStatus').value = doc.status || 'Đang hiệu lực';
+        document.getElementById('docFormValue').value = doc.value || '';
+        document.getElementById('docFormDescription').value = doc.description || '';
+        document.getElementById('docFormCurrentFileNote').textContent = `Tệp hiện tại: ${doc.fileName} (Chọn tệp mới nếu muốn thay thế)`;
+      } else {
+        document.getElementById('modalDocFormTitle').textContent = 'Thêm Mới Hồ Sơ, Tài Liệu';
+        document.getElementById('docFormId').value = '';
+        document.getElementById('docFormCode').value = 'HS-2026/' + String(state.documents.length + 1).padStart(3, '0');
+        document.getElementById('docFormTitle').value = '';
+        // Auto-select currently active sidebar category (As highlighted in Video 02:33)
+        if (state.selectedCategoryId !== 'ALL') {
+          document.getElementById('docFormCategory').value = state.selectedCategoryId;
+        }
+        document.getElementById('docFormIssueDate').value = '2026-10-28';
+        document.getElementById('docFormExpiryDate').value = '2027-10-28';
+        document.getElementById('docFormStatus').value = 'Đang hiệu lực';
+        document.getElementById('docFormValue').value = '';
+        document.getElementById('docFormDescription').value = '';
+        document.getElementById('docFormCurrentFileNote').textContent = `Lưu trực tiếp vào Drive: ${state.driveConfig.folderName}`;
+      }
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeDocModal() {
+      const modal = document.getElementById('modalDocForm');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function openPreviewModal(docId) {
+      const doc = state.documents.find(d => d.id === docId);
+      if (!doc) return;
+      currentPreviewDocId = doc.id;
+
+      const cat = state.categories.find(c => c.id === doc.categoryId) || { name: 'Danh mục', color: '#059669' };
+      const ft = getFileTypeMeta(doc.fileType);
+      const exp = getExpiryStatus(doc);
+
+      document.getElementById('previewDocTitle').textContent = doc.title;
+      document.getElementById('previewDocMeta').textContent = `Số HS: ${doc.code} • Danh mục: ${cat.name} • Lưu tại Drive: ${state.driveConfig.folderName}`;
+      document.getElementById('previewFileNameBar').textContent = doc.fileName;
+
+      // Render Viewport Preview (Supports live uploaded Image/Text or simulated official document preview)
+      const viewport = document.getElementById('previewContentViewport');
+      if (doc.drivePreviewUrl) {
+        viewport.innerHTML = `
+          <iframe src="${doc.drivePreviewUrl}" class="w-full h-[380px] rounded-lg border border-slate-200" allow="autoplay"></iframe>
+        `;
+      } else if (doc.previewDataUrl && doc.fileType === 'IMAGE') {
+        viewport.innerHTML = `
+          <div class="flex-1 flex items-center justify-center bg-slate-50 rounded-lg p-2">
+            <img src="${doc.previewDataUrl}" alt="${doc.fileName}" class="max-h-[340px] max-w-full h-auto rounded-lg shadow object-contain" />
+          </div>
+        `;
+      } else {
+        viewport.innerHTML = `
+          <div class="border border-slate-200 rounded-xl p-6 bg-slate-50/50 space-y-4">
+            <div class="flex items-start justify-between border-b border-slate-200 pb-4">
+              <div>
+                <p class="text-[11px] font-bold uppercase tracking-wider text-emerald-700">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</p>
+                <p class="text-[11px] text-slate-500">Độc lập - Tự do - Hạnh phúc</p>
+              </div>
+              <div class="text-right">
+                <span class="px-2.5 py-1 rounded-lg bg-slate-900 text-white font-mono text-xs font-bold">${doc.code}</span>
+                <p class="text-[11px] text-slate-500 mt-1">Ngày ban hành: ${doc.issueDate}</p>
+              </div>
+            </div>
+            <div>
+              <h4 class="text-base font-bold text-slate-900 uppercase">${doc.title}</h4>
+              <p class="text-xs text-slate-600 mt-2 leading-relaxed">${doc.description || 'Văn bản lưu trữ chính thức trên hệ thống Google Drive doanh nghiệp.'}</p>
+            </div>
+            <div class="grid grid-cols-2 gap-3 bg-white p-3.5 rounded-xl border border-slate-200 text-xs">
+              <div><span class="text-slate-400">Đơn vị phụ trách:</span> <strong class="text-slate-800 block">${doc.department}</strong></div>
+              <div><span class="text-slate-400">Dự án liên quan:</span> <strong class="text-slate-800 block">${doc.project || '—'}</strong></div>
+              <div><span class="text-slate-400">Đối tác / Nhà cung cấp:</span> <strong class="text-slate-800 block">${doc.vendor || '—'}</strong></div>
+              <div><span class="text-slate-400">Giá trị hợp đồng:</span> <strong class="text-emerald-700 block">${formatCurrency(doc.value)}</strong></div>
+            </div>
+            <div class="flex items-center justify-between pt-2 text-[11px] text-slate-400">
+              <span><i class="fa-solid ${ft.icon} mr-1"></i>Tệp gốc: <strong>${doc.fileName}</strong> (${ft.label})</span>
+              <span>Người tải lên: ${doc.owner}</span>
+            </div>
+          </div>
+        `;
+      }
+
+      // Metadata Sidebar
+      document.getElementById('previewMetadataDetails').innerHTML = `
+        <div class="flex justify-between py-1.5 border-b border-slate-100"><span class="text-slate-500">Số hồ sơ:</span><strong class="font-mono text-slate-900">${doc.code}</strong></div>
+        <div class="flex justify-between py-1.5 border-b border-slate-100"><span class="text-slate-500">Danh mục:</span><strong style="color:${cat.color}">${cat.name}</strong></div>
+        <div class="flex justify-between py-1.5 border-b border-slate-100"><span class="text-slate-500">Phòng ban:</span><strong class="text-slate-800 text-right">${doc.department}</strong></div>
+        <div class="flex justify-between py-1.5 border-b border-slate-100"><span class="text-slate-500">Dự án:</span><strong class="text-slate-800 text-right">${doc.project || '—'}</strong></div>
+        <div class="flex justify-between py-1.5 border-b border-slate-100"><span class="text-slate-500">Nhà cung cấp:</span><strong class="text-slate-800 text-right">${doc.vendor || '—'}</strong></div>
+        <div class="flex justify-between py-1.5 border-b border-slate-100"><span class="text-slate-500">Hiệu lực:</span><span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ${exp.badgeClass}">${exp.label}</span></div>
+        <div class="flex justify-between py-1.5 border-b border-slate-100"><span class="text-slate-500">Giá trị:</span><strong class="text-emerald-700">${formatCurrency(doc.value)}</strong></div>
+        <div class="flex justify-between py-1.5"><span class="text-slate-500">Thư mục Drive:</span><strong class="text-slate-800 truncate max-w-[150px]">${state.driveConfig.folderName}</strong></div>
+      `;
+
+      const modal = document.getElementById('modalPreviewDoc');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closePreviewModal() {
+      const modal = document.getElementById('modalPreviewDoc');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      currentPreviewDocId = null;
+    }
+
+    function deleteDocument(docId) {
+      const doc = state.documents.find(d => d.id === docId);
+      if (!doc) return;
+      state.documents = state.documents.filter(d => d.id !== docId);
+      saveState();
+      renderAll();
+      showToast(`Đã xóa hồ sơ "${doc.code}" khỏi hệ thống!`);
+    }
+
+    // Export filtered documents to CSV (Excel compatible UTF-8 BOM)
+    function exportFilteredToExcelCsv() {
+      const rows = getFilteredDocuments();
+      if (rows.length === 0) {
+        showToast('Không có dữ liệu hồ sơ để xuất!', 'error');
+        return;
+      }
+      const headers = ['Số Hồ Sơ', 'Tên Tài Liệu', 'Danh Mục', 'Phòng Ban', 'Dự Án', 'Nhà Cung Cấp', 'Ngày Ban Hành', 'Ngày Kết Thúc', 'Giá Trị HĐ', 'Tình Trạng', 'Tên Tệp Drive', 'Loại Tệp', 'Người Phụ Trách'];
+      const csvLines = [headers.join(',')];
+
+      rows.forEach(d => {
+        const cat = state.categories.find(c => c.id === d.categoryId);
+        const line = [
+          d.code,
+          d.title,
+          cat ? cat.name : '',
+          d.department,
+          d.project,
+          d.vendor,
+          d.issueDate,
+          d.expiryDate,
+          d.value || 0,
+          d.status,
+          d.fileName,
+          d.fileType,
+          d.owner
+        ].map(val => `"${String(val || '').replace(/"/g, '""')}"`);
+        csvLines.push(line.join(','));
+      });
+
+      const blob = new Blob(['\uFEFF' + csvLines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Danh_Sach_Ho_So_Tai_Lieu_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showToast(`Đã xuất ${rows.length} hồ sơ ra file Excel (.csv) thành công!`);
+    }
+
+    // ==========================================
+    // EVENT LISTENERS INITIALIZATION
+    // ==========================================
+    window.addEventListener('DOMContentLoaded', () => {
+      renderAll();
+
+      // Mobile sidebar toggle
+      document.getElementById('mobileMenuBtn').addEventListener('click', () => {
+        const sb = document.getElementById('leftSidebar');
+        sb.classList.toggle('hidden');
+      });
+
+      // Top Navigation Tabs
+      const switchTab = (tabName) => {
+        state.activeTab = tabName;
+        saveState();
+        renderAll();
+      };
+      document.getElementById('navTabDocs').addEventListener('click', () => switchTab('DOCS'));
+      document.getElementById('navTabSystem').addEventListener('click', () => switchTab('SYSTEM'));
+      document.getElementById('navTabAppsScript').addEventListener('click', () => switchTab('APPSSCRIPT'));
+      document.getElementById('navTabDocsMobile').addEventListener('click', () => switchTab('DOCS'));
+      document.getElementById('navTabSystemMobile').addEventListener('click', () => switchTab('SYSTEM'));
+      document.getElementById('navTabAppsScriptMobile').addEventListener('click', () => switchTab('APPSSCRIPT'));
+
+      document.getElementById('btnSidebarConfigDrive').addEventListener('click', () => switchTab('SYSTEM'));
+      document.getElementById('btnQuickAddCategory').addEventListener('click', () => switchTab('SYSTEM'));
+
+      // User Switcher (Instant Permission Demo)
+      document.getElementById('userSwitcherSelect').addEventListener('change', (e) => {
+        state.currentUser = e.target.value;
+        saveState();
+        renderAll();
+        const u = getCurrentUserObj();
+        showToast(`Đã chuyển sang tài khoản: ${u.fullName}`);
+      });
+
+      // Expiry Alert Bell
+      document.getElementById('btnExpiryAlert').addEventListener('click', () => {
+        state.activeTab = 'DOCS';
+        state.onlyExpiring = !state.onlyExpiring;
+        saveState();
+        renderAll();
+        if (state.onlyExpiring) {
+          showToast('Đang lọc các hồ sơ sắp hết hạn hoặc đã quá hạn!');
+        }
+      });
+      document.getElementById('btnShowAllFromExpiry').addEventListener('click', () => {
+        state.onlyExpiring = false;
+        saveState();
+        renderAll();
+      });
+
+      // Filter Controls
+      ['filterSearchInput', 'filterDepartment', 'filterProject', 'filterVendor', 'filterOwner', 'filterDateFrom', 'filterDateTo'].forEach(id => {
+        document.getElementById(id).addEventListener('input', () => renderDocumentList());
+        document.getElementById(id).addEventListener('change', () => renderDocumentList());
+      });
+
+      document.getElementById('groupBySelect').addEventListener('change', (e) => {
+        state.groupBy = e.target.value;
+        saveState();
+        renderDocumentList();
+      });
+
+      document.getElementById('btnResetFilters').addEventListener('click', () => {
+        document.getElementById('filterSearchInput').value = '';
+        document.getElementById('filterDepartment').value = 'ALL';
+        document.getElementById('filterProject').value = 'ALL';
+        document.getElementById('filterVendor').value = 'ALL';
+        document.getElementById('filterOwner').value = 'ALL';
+        document.getElementById('filterDateFrom').value = '';
+        document.getElementById('filterDateTo').value = '';
+        state.selectedCategoryId = 'ALL';
+        state.selectedFileType = 'ALL';
+        state.onlyExpiring = false;
+        state.groupBy = 'NONE';
+        saveState();
+        renderAll();
+        showToast('Đã đặt lại toàn bộ bộ lọc!');
+      });
+
+      document.getElementById('btnExportExcel').addEventListener('click', exportFilteredToExcelCsv);
+
+      // Add / Edit Document Modal
+      document.getElementById('btnHeaderAddDoc').addEventListener('click', () => openDocModal(null));
+      document.getElementById('btnCloseDocModal').addEventListener('click', closeDocModal);
+      document.getElementById('btnCancelDocModal').addEventListener('click', closeDocModal);
+
+      document.getElementById('formDocument').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const editId = document.getElementById('docFormId').value;
+        const fileInput = document.getElementById('docFormFileInput');
+        const uploadedFile = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+
+        const finalizeSave = (dataUrl = '', drivePreviewUrl = '') => {
+          const existing = editId ? state.documents.find(d => d.id === editId) : null;
+          const fileName = uploadedFile
+            ? uploadedFile.name
+            : (existing ? existing.fileName : (document.getElementById('docFormCode').value.replace(/[^a-zA-Z0-9_-]/g, '_') + '.pdf'));
+          const fileType = uploadedFile
+            ? detectFileTypeFromName(uploadedFile.name)
+            : (existing ? existing.fileType : 'PDF');
+
+          const docPayload = {
+            id: editId || ('DOC-' + Date.now()),
+            code: document.getElementById('docFormCode').value.trim(),
+            title: document.getElementById('docFormTitle').value.trim(),
+            categoryId: document.getElementById('docFormCategory').value,
+            department: document.getElementById('docFormDepartment').value,
+            project: document.getElementById('docFormProject').value,
+            vendor: document.getElementById('docFormVendor').value,
+            issueDate: document.getElementById('docFormIssueDate').value,
+            expiryDate: document.getElementById('docFormExpiryDate').value,
+            status: document.getElementById('docFormStatus').value,
+            value: Number(document.getElementById('docFormValue').value) || 0,
+            description: document.getElementById('docFormDescription').value.trim(),
+            fileName: fileName,
+            fileType: fileType,
+            owner: existing ? existing.owner : getCurrentUserObj().fullName,
+            previewDataUrl: dataUrl || (existing ? existing.previewDataUrl : ''),
+            drivePreviewUrl: drivePreviewUrl || (existing ? (existing.drivePreviewUrl || '') : '')
+          };
+
+          if (existing) {
+            const idx = state.documents.findIndex(d => d.id === editId);
+            state.documents[idx] = docPayload;
+            showToast(`Đã cập nhật hồ sơ "${docPayload.code}" thành công!`);
+          } else {
+            state.documents.unshift(docPayload);
+            showToast(`Đã lưu hồ sơ "${docPayload.code}" vào thư mục Drive "${state.driveConfig.folderName}"!`);
+          }
+
+          saveState();
+          closeDocModal();
+          renderAll();
+        };
+
+        if (uploadedFile && IS_GAS_ENV) {
+          showToast('Đang tải tệp lên Google Drive...');
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            const base64Data = String(ev.target.result).split(',')[1] || '';
+            google.script.run.withSuccessHandler((res) => {
+              if (res && res.ok) {
+                finalizeSave('', res.previewUrl);
+              } else {
+                showToast('Lỗi tải tệp Drive: ' + (res ? res.message : ''), 'error');
+                finalizeSave('', '');
+              }
+            }).uploadFileToDrive({
+              folderId: state.driveConfig.folderId,
+              fileName: uploadedFile.name,
+              mimeType: uploadedFile.type,
+              base64Data: base64Data
+            });
+          };
+          reader.readAsDataURL(uploadedFile);
+        } else if (uploadedFile && uploadedFile.type.startsWith('image/')) {
+          const reader = new FileReader();
+          reader.onload = (ev) => finalizeSave(ev.target.result, '');
+          reader.readAsDataURL(uploadedFile);
+        } else {
+          finalizeSave('', '');
+        }
+      });
+
+      // Preview Modal & Replace File (Video 01:06 & 07:33)
+      document.getElementById('btnClosePreviewModal').addEventListener('click', closePreviewModal);
+      document.getElementById('btnEditFromPreview').addEventListener('click', () => {
+        const id = currentPreviewDocId;
+        closePreviewModal();
+        if (id) openDocModal(id);
+      });
+
+      document.getElementById('btnSharePreviewDoc').addEventListener('click', () => {
+        const doc = state.documents.find(d => d.id === currentPreviewDocId);
+        if (!doc) return;
+        const shareUrl = `https://drive.google.com/file/d/${state.driveConfig.folderId}/${encodeURIComponent(doc.fileName)}/view?usp=sharing`;
+        const tempInput = document.createElement('input');
+        tempInput.value = shareUrl;
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        document.execCommand('copy');
+        tempInput.remove();
+        showToast('Đã sao chép đường liên kết chia sẻ Google Drive vào bộ nhớ tạm!');
+      });
+
+      document.getElementById('replaceFileInput').addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file || !currentPreviewDocId) return;
+        const doc = state.documents.find(d => d.id === currentPreviewDocId);
+        if (!doc) return;
+
+        const updateReplaced = (dataUrl = '') => {
+          doc.fileName = file.name;
+          doc.fileType = detectFileTypeFromName(file.name);
+          doc.previewDataUrl = dataUrl;
+          saveState();
+          openPreviewModal(doc.id);
+          renderAll();
+          showToast(`Đã thay thế tệp mới "${file.name}" thành công!`);
+        };
+
+        if (file.type.startsWith('image/')) {
+          const reader = new FileReader();
+          reader.onload = (ev) => updateReplaced(ev.target.result);
+          reader.readAsDataURL(file);
+        } else {
+          updateReplaced('');
+        }
+      });
+
+      // Drive Folder Check & Save (LOCKED FOR CLIENT DEMO)
+      document.getElementById('btnVerifyDriveFolder').addEventListener('click', () => {
+        showToast('Đường dẫn thư mục Google Drive đã được khóa cố định cho bản Demo khách hàng!');
+      });
+
+      document.getElementById('btnSaveDriveFolder').addEventListener('click', () => {
+        showToast('Thư mục Google Drive đang ở chế độ khóa bảo vệ, không thể thay đổi trên giao diện Demo!', 'error');
+      });
+
+      // System Category Save / Cancel
+      document.getElementById('btnCancelEditCategory').addEventListener('click', () => {
+        document.getElementById('editCategoryId').value = '';
+        document.getElementById('inputCategoryName').value = '';
+        document.getElementById('btnCancelEditCategory').classList.add('hidden');
+        document.getElementById('btnSaveCategory').innerHTML = `<i class="fa-solid fa-plus mr-1"></i> Lưu danh mục`;
+      });
+
+      document.getElementById('btnSaveCategory').addEventListener('click', () => {
+        const editId = document.getElementById('editCategoryId').value;
+        const name = document.getElementById('inputCategoryName').value.trim();
+        const icon = document.getElementById('inputCategoryIcon').value;
+        const color = document.getElementById('inputCategoryColor').value;
+        if (!name) {
+          showToast('Vui lòng nhập tên danh mục hồ sơ!', 'error');
+          return;
+        }
+        if (editId) {
+          const cat = state.categories.find(c => c.id === editId);
+          if (cat) {
+            cat.name = name;
+            cat.icon = icon;
+            cat.color = color;
+          }
+          showToast(`Đã cập nhật danh mục "${name}"!`);
+        } else {
+          const newId = 'cat_' + Date.now();
+          state.categories.push({ id: newId, name, icon, color });
+          // Automatically grant Admin access
+          state.users.forEach(u => {
+            if (u.role === 'ADMIN') u.allowedCategories.push(newId);
+          });
+          showToast(`Đã thêm danh mục mới "${name}"!`);
+        }
+        document.getElementById('editCategoryId').value = '';
+        document.getElementById('inputCategoryName').value = '';
+        document.getElementById('btnCancelEditCategory').classList.add('hidden');
+        document.getElementById('btnSaveCategory').innerHTML = `<i class="fa-solid fa-plus mr-1"></i> Lưu danh mục`;
+        saveState();
+        renderAll();
+      });
+
+      // Add Master Attributes (Department, Project, Vendor)
+      document.getElementById('btnAddDepartment').addEventListener('click', () => {
+        const val = document.getElementById('inputNewDepartment').value.trim();
+        if (!val) return;
+        if (!state.departments.includes(val)) state.departments.push(val);
+        document.getElementById('inputNewDepartment').value = '';
+        saveState();
+        renderAll();
+        showToast(`Đã thêm phòng ban "${val}"!`);
+      });
+
+      document.getElementById('btnAddProject').addEventListener('click', () => {
+        const val = document.getElementById('inputNewProject').value.trim();
+        if (!val) return;
+        if (!state.projects.includes(val)) state.projects.push(val);
+        document.getElementById('inputNewProject').value = '';
+        saveState();
+        renderAll();
+        showToast(`Đã thêm dự án "${val}"!`);
+      });
+
+      document.getElementById('btnAddVendor').addEventListener('click', () => {
+        const val = document.getElementById('inputNewVendor').value.trim();
+        if (!val) return;
+        if (!state.vendors.includes(val)) state.vendors.push(val);
+        document.getElementById('inputNewVendor').value = '';
+        saveState();
+        renderAll();
+        showToast(`Đã thêm nhà cung cấp "${val}"!`);
+      });
+
+      // Login Modal
+      const loginModal = document.getElementById('modalLogin');
+      document.getElementById('btnOpenLoginModal').addEventListener('click', () => {
+        document.getElementById('loginUsername').innerHTML = state.users.map(u =>
+          `<option value="${u.username}" ${u.username === state.currentUser ? 'selected' : ''}>${u.fullName} (@${u.username})</option>`
+        ).join('');
+        loginModal.classList.remove('hidden');
+        loginModal.classList.add('flex');
+      });
+      const closeLogin = () => {
+        loginModal.classList.add('hidden');
+        loginModal.classList.remove('flex');
+      };
+      document.getElementById('btnCloseLoginModal').addEventListener('click', closeLogin);
+      document.getElementById('btnCancelLogin').addEventListener('click', closeLogin);
+      document.getElementById('formLogin').addEventListener('submit', (e) => {
+        e.preventDefault();
+        state.currentUser = document.getElementById('loginUsername').value;
+        saveState();
+        closeLogin();
+        renderAll();
+        showToast(`Đăng nhập thành công: ${getCurrentUserObj().fullName}`);
+      });
+
+      // Add New User Modal
+      const addUserModal = document.getElementById('modalAddUser');
+      document.getElementById('btnAddNewUserModal').addEventListener('click', () => {
+        addUserModal.classList.remove('hidden');
+        addUserModal.classList.add('flex');
+      });
+      const closeAddUser = () => {
+        addUserModal.classList.add('hidden');
+        addUserModal.classList.remove('flex');
+      };
+      document.getElementById('btnCloseAddUserModal').addEventListener('click', closeAddUser);
+      document.getElementById('btnCancelAddUser').addEventListener('click', closeAddUser);
+      document.getElementById('formAddUser').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const uname = document.getElementById('newUserUsername').value.trim().toLowerCase();
+        const fname = document.getElementById('newUserFullName').value.trim();
+        const pwd = document.getElementById('newUserPassword').value.trim() || '123456';
+        if (!uname || !fname) return;
+        if (state.users.some(u => u.username === uname)) {
+          showToast('Username này đã tồn tại!', 'error');
+          return;
+        }
+        state.users.push({
+          username: uname,
+          password: pwd,
+          fullName: fname,
+          role: 'USER',
+          allowedCategories: [state.categories[0].id]
+        });
+        document.getElementById('newUserUsername').value = '';
+        document.getElementById('newUserFullName').value = '';
+        saveState();
+        closeAddUser();
+        renderAll();
+        showToast(`Đã tạo tài khoản @${uname}! Hãy tích chọn danh mục phân quyền ở bảng dưới.`);
+      });
+
+      // Copy Apps Script Code
+      document.getElementById('btnCopyAppsScript').addEventListener('click', () => {
+        const codeText = document.getElementById('appsScriptCodeBlock').innerText;
+        const area = document.createElement('textarea');
+        area.value = codeText;
+        document.body.appendChild(area);
+        area.select();
+        document.execCommand('copy');
+        area.remove();
+        showToast('Đã sao chép toàn bộ mã Code.gs vào bộ nhớ tạm!');
+      });
+
+      // Copy & Download Index.html
+      document.getElementById('btnCopyIndexHtml').addEventListener('click', () => {
+        const fullHtml = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+        const area = document.createElement('textarea');
+        area.value = fullHtml;
+        document.body.appendChild(area);
+        area.select();
+        document.execCommand('copy');
+        area.remove();
+        showToast('Đã sao chép toàn bộ mã nguồn Index.html! Hãy dán vào tệp Index.html trong Apps Script.');
+      });
+
+      document.getElementById('btnDownloadIndexHtml').addEventListener('click', () => {
+        const fullHtml = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+        const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'Index.html';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        showToast('Đã tải tệp Index.html về máy tính để bạn chỉnh sửa code hoặc lưu trữ!');
+      });
+
+      // Brand Config Save
+      document.getElementById('btnSaveBrandConfig').addEventListener('click', () => {
+        state.brandTitle = document.getElementById('inputBrandTitle').value.trim() || 'DMS Webapp';
+        state.brandSubtitle = document.getElementById('inputBrandSubtitle').value.trim();
+        saveState();
+        renderAll();
+        showToast('Đã cập nhật tên hệ thống và tiêu đề thương hiệu!');
+      });
+
+      // Clear Demo Documents to start fresh
+      document.getElementById('btnClearDemoDocs').addEventListener('click', () => {
+        state.documents = [];
+        saveState();
+        renderAll();
+        showToast('Đã làm sạch danh sách hồ sơ mẫu! Bạn có thể bắt đầu nhập dữ liệu thật.');
+      });
+
+      // Backup & Restore JSON
+      document.getElementById('btnBackupJson').addEventListener('click', () => {
+        const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `DMS_Backup_${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        showToast('Đã tải tệp sao lưu dữ liệu (.json) về máy!');
+      });
+
+      document.getElementById('inputRestoreJson').addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          try {
+            const imported = JSON.parse(ev.target.result);
+            if (imported && Array.isArray(imported.categories) && Array.isArray(imported.documents)) {
+              state = Object.assign({}, DEFAULT_STATE, imported);
+              saveState();
+              renderAll();
+              showToast('Đã khôi phục dữ liệu hệ thống thành công!');
+            } else {
+              showToast('Tệp JSON không đúng cấu trúc dữ liệu!', 'error');
+            }
+          } catch (err) {
+            showToast('Lỗi đọc tệp JSON: ' + err.message, 'error');
+          }
+        };
+        reader.readAsText(file);
+      });
+
+      // Quick System & Permission Modal (Matches User Screenshot)
+      const quickSysModal = document.getElementById('modalQuickSystem');
+      document.getElementById('btnOpenQuickSystemModal').addEventListener('click', () => {
+        renderExpandedUserPermissionCards();
+        quickSysModal.classList.remove('hidden');
+        quickSysModal.classList.add('flex');
+      });
+      document.getElementById('btnCloseQuickSystemModal').addEventListener('click', () => {
+        quickSysModal.classList.add('hidden');
+        quickSysModal.classList.remove('flex');
+      });
+
+      // Add Category inside Quick System Modal
+      document.getElementById('btnModalAddCategory').addEventListener('click', () => {
+        const name = document.getElementById('modalNewCatName').value.trim();
+        const icon = document.getElementById('modalNewCatIcon').value || 'fa-folder-open';
+        if (!name) {
+          showToast('Vui lòng nhập tên danh mục hồ sơ mới!', 'error');
+          return;
+        }
+        const newId = 'cat_' + Date.now();
+        state.categories.push({ id: newId, name, icon, color: '#2563eb' });
+        state.users.forEach(u => {
+          if (u.role === 'ADMIN') u.allowedCategories.push(newId);
+        });
+        document.getElementById('modalNewCatName').value = '';
+        saveState();
+        renderAll();
+        showToast(`Đã thêm danh mục "${name}" và cập nhật vào bảng phân quyền!`);
+      });
+
+      // Quick Add User inside Modal
+      document.getElementById('btnModalQuickAddUser').addEventListener('click', () => {
+        const uname = document.getElementById('modalQuickUsername').value.trim().toLowerCase();
+        const fname = document.getElementById('modalQuickFullName').value.trim();
+        const pwd = document.getElementById('modalQuickPassword').value.trim() || '123456';
+        if (!uname || !fname) {
+          showToast('Vui lòng nhập Username và Tên hiển thị!', 'error');
+          return;
+        }
+        if (state.users.some(u => u.username === uname)) {
+          showToast('Tên đăng nhập này đã tồn tại!', 'error');
+          return;
+        }
+        state.users.push({
+          username: uname,
+          password: pwd,
+          fullName: fname,
+          role: 'USER',
+          allowedCategories: state.categories.slice(0, 2).map(c => c.id),
+          permissions: { canView: true, canCreate: true, canEdit: false, canDelete: false }
+        });
+        document.getElementById('modalQuickUsername').value = '';
+        document.getElementById('modalQuickFullName').value = '';
+        saveState();
+        renderAll();
+        showToast(`Đã thêm tài khoản "${fname} (${uname})"! Hãy tích chọn các mục truy cập bên dưới.`);
+      });
+
+      // Inline Create User in System Tab
+      document.getElementById('btnInlineCreateUser').addEventListener('click', () => {
+        const uname = document.getElementById('inlineUserUsername').value.trim().toLowerCase();
+        const fname = document.getElementById('inlineUserFullName').value.trim();
+        const pwd = document.getElementById('inlineUserPassword').value.trim() || '123456';
+        const role = document.getElementById('inlineUserRole').value || 'USER';
+        if (!uname || !fname) {
+          showToast('Vui lòng nhập đầy đủ Tên đăng nhập và Họ tên!', 'error');
+          return;
+        }
+        if (state.users.some(u => u.username === uname)) {
+          showToast('Username này đã tồn tại!', 'error');
+          return;
+        }
+        const defaultCats = role === 'ADMIN'
+          ? state.categories.map(c => c.id)
+          : state.categories.slice(0, 3).map(c => c.id);
+        const defaultPerms = role === 'ADMIN' || role === 'MANAGER'
+          ? { canView: true, canCreate: true, canEdit: true, canDelete: true }
+          : { canView: true, canCreate: true, canEdit: false, canDelete: false };
+
+        state.users.push({
+          username: uname,
+          password: pwd,
+          fullName: fname,
+          role: role,
+          allowedCategories: defaultCats,
+          permissions: defaultPerms
+        });
+        document.getElementById('inlineUserUsername').value = '';
+        document.getElementById('inlineUserFullName').value = '';
+        saveState();
+        renderAll();
+        showToast(`Đã thêm tài khoản "${fname}"! Bạn có thể tích phân quyền từng mục ngay bên dưới.`);
+      });
+
+      // Search Filter for User Permission Cards
+      const searchUserInp = document.getElementById('searchUserPermissionInput');
+      if (searchUserInp) {
+        searchUserInp.addEventListener('input', () => renderExpandedUserPermissionCards());
+      }
+
+      // If running inside Google Apps Script Webapp, load live state from Google Sheets
+      if (IS_GAS_ENV) {
+        google.script.run.withSuccessHandler((remoteState) => {
+          if (remoteState && Array.isArray(remoteState.categories)) {
+            state = Object.assign({}, DEFAULT_STATE, remoteState);
+            renderAll();
+            showToast('Đã đồng bộ dữ liệu trực tiếp từ Google Sheets!');
+          } else {
+            saveState();
+          }
+        }).getInitialData();
+      }
+    });
+  </script>
+</body>
+</html>
