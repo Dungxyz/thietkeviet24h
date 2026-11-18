@@ -317,13 +317,6 @@ export function PublicHome({
                 biểu mẫu in ấn theo yêu cầu riêng của từng đơn vị.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={onOpenAdmin}
-              className="text-xs font-medium text-slate-600 hover:text-blue-700 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-            >
-              + Thêm mẫu WebApp trong Quản trị
-            </button>
           </div>
 
           {loading ? (
@@ -728,13 +721,6 @@ export function PublicHome({
             <a href="#kho-phan-mem" className="hover:text-slate-900">
               Kho phần mềm
             </a>
-            <button
-              type="button"
-              onClick={onOpenAdmin}
-              className="hover:text-slate-900 cursor-pointer"
-            >
-              Quản trị
-            </button>
           </div>
         </div>
       </footer>

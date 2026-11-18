@@ -5,9 +5,11 @@ import { PostDetailModal } from './components/PostDetailModal.tsx';
 import { PublicHome } from './components/PublicHome.tsx';
 import type { PostItem } from './shared/types.ts';
 
+const ADMIN_PATH = '/adminvd';
+
 export default function App() {
   const [activeView, setActiveView] = useState<'home' | 'admin'>(() => {
-    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')) {
+    if (typeof window !== 'undefined' && window.location.pathname.startsWith(ADMIN_PATH)) {
       return 'admin';
     }
     return 'home';
@@ -36,7 +38,7 @@ export default function App() {
   function handleNavigateView(view: 'home' | 'admin', sectionId?: string) {
     setActiveView(view);
     if (typeof window !== 'undefined') {
-      const nextUrl = view === 'admin' ? '/admin' : '/';
+      const nextUrl = view === 'admin' ? ADMIN_PATH : '/';
       if (window.location.pathname !== nextUrl) {
         window.history.pushState({}, '', nextUrl);
       }
@@ -53,7 +55,7 @@ export default function App() {
 
   useEffect(() => {
     const onPopState = () => {
-      setActiveView(window.location.pathname.startsWith('/admin') ? 'admin' : 'home');
+      setActiveView(window.location.pathname.startsWith(ADMIN_PATH) ? 'admin' : 'home');
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);

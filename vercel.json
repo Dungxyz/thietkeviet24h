@@ -4,8 +4,7 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/index"
+      "source": "/adminvd", "destination": "/index.html"
     },
     {
       "source": "/.well-known/mcp.json",
