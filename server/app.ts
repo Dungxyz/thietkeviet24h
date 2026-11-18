@@ -73,11 +73,18 @@ export function createApp() {
   });
 
   app.get('/api/health', (_req, res) => {
-    const hasRedis = Boolean(
-      (process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL) &&
-      (process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN)
+    const hasSupabase = Boolean(
+      (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL) &&
+      (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY)
     );
-    res.json({ ok: true, service: 'thietkeviet24h', storage: hasRedis ? 'upstash-redis' : 'local-file', mcp: MCP_SERVER_INFO });
+    res.json({
+      ok: true,
+      service: 'thietkeviet24h',
+      storage: hasSupabase ? 'supabase' : 'local-file',
+      hasUrl: Boolean(process.env.SUPABASE_URL),
+      hasKey: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
+      mcp: MCP_SERVER_INFO,
+    });
   });
 
   // MCP Discovery & JSON-RPC 2.0 Endpoint
