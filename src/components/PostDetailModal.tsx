@@ -29,6 +29,27 @@ export function PostDetailModal({
         ? 'Tiện ích phần mềm'
         : 'Thủ thuật & Hướng dẫn';
 
+  // Xác định đường dẫn Demo cho sản phẩm WebApp
+  const demoHref = (() => {
+    if (post.demoUrl && post.demoUrl.trim() !== '' && post.demoUrl !== '#') {
+      return post.demoUrl.trim();
+    }
+    if (post.downloadUrl && post.downloadUrl.trim() !== '' && post.downloadUrl !== '#') {
+      return post.downloadUrl.trim();
+    }
+    const lowerTitle = post.title.toLowerCase();
+    if (lowerTitle.includes('pos') || lowerTitle.includes('cà phê')) {
+      return '/he-thong-pos-quan-ly/index.html';
+    }
+    if (lowerTitle.includes('thu chi') || lowerTitle.includes('công nợ')) {
+      return '/quan-ly-thu-chi/index.html';
+    }
+    if (lowerTitle.includes('hợp đồng') || lowerTitle.includes('tài liệu')) {
+      return '/demo-hop-dong/index.html';
+    }
+    return '';
+  })();
+
   async function handleDownload() {
     if (!post) return;
     setDownloading(true);
@@ -76,7 +97,7 @@ export function PostDetailModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 transition-colors focus-visible:outline-2 focus-visible:outline-blue-700"
+            className="p-2 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 transition-colors focus-visible:outline-2 focus-visible:outline-blue-700 cursor-pointer"
             aria-label="Đóng cửa sổ chi tiết"
           >
             <X className="w-5 h-5" />
@@ -158,16 +179,30 @@ export function PostDetailModal({
           <div className="text-xs text-slate-500">
             Cập nhật: {new Date(post.updatedAt).toLocaleDateString('vi-VN')} · Tác giả: {post.author}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
             {post.type === 'webapp' ? (
-              <button
-                type="button"
-                onClick={() => onRequestWebApp(post)}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-sm font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-              >
-                Đăng ký thiết kế mẫu này
-                <ArrowRight className="w-4 h-4" />
-              </button>
+              <>
+                {demoHref && (
+                  <a
+                    href={demoHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-sm font-medium transition-colors whitespace-nowrap shrink-0"
+                  >
+                    <ExternalLink className="w-4 h-4 text-slate-600" />
+                    Chạy thử Demo
+                  </a>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => onRequestWebApp(post)}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                >
+                  Đăng ký thiết kế mẫu này
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </>
             ) : (
               <button
                 type="button"
