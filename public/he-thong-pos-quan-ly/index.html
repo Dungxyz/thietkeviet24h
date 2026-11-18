@@ -60,7 +60,7 @@
 <body>
 
 <!-- ==================== 1. MÀN HÌNH ĐĂNG NHẬP ==================== -->
-<div id="loginScreen" class="container">
+<div id="loginScreen" class="container hidden">
   <div class="row justify-content-center align-items-center" style="min-height: 92vh;">
     <div class="col-12 col-sm-8 col-md-5 col-lg-4">
       <div class="card border-0 shadow p-4 rounded-4">
@@ -691,9 +691,166 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 // Dán link Web App Apps Script (/exec) của bạn vào đây
-  const GAS_API_URL = '';
+  
+const GAS_API_URL = '';
 
-  // Bộ giả lập google.script.run tự động chuyển thành fetch() khi chạy trên Vercel
+  // Bộ giả lập dữ liệu Demo chạy mượt mà trực tiếp trên trình duyệt (không cần API backend)
+  const DEMO_STATE = {
+    menu: [
+      { maMon: 'CF01', tenMon: 'Cà phê Sữa Đá Sài Gòn', nhom: 'Cà phê', gia: 25000, trangThai: 'Còn hàng' },
+      { maMon: 'CF02', tenMon: 'Cà phê Đen Đá', nhom: 'Cà phê', gia: 20000, trangThai: 'Còn hàng' },
+      { maMon: 'CF03', tenMon: 'Bạc Xỉu Đá', nhom: 'Cà phê', gia: 28000, trangThai: 'Còn hàng' },
+      { maMon: 'CF04', tenMon: 'Cà phê Muối Huế', nhom: 'Cà phê', gia: 32000, trangThai: 'Còn hàng' },
+      { maMon: 'TR01', tenMon: 'Trà Đào Cam Sả', nhom: 'Trà trái cây', gia: 35000, trangThai: 'Còn hàng' },
+      { maMon: 'TR02', tenMon: 'Trà Vải Hoa Hồng', nhom: 'Trà trái cây', gia: 35000, trangThai: 'Còn hàng' },
+      { maMon: 'TR03', tenMon: 'Trà Mãng Cầu Xiêm', nhom: 'Trà trái cây', gia: 38000, trangThai: 'Còn hàng' },
+      { maMon: 'TS01', tenMon: 'Trà Sữa Trân Châu Đường Đen', nhom: 'Trà sữa', gia: 35000, trangThai: 'Còn hàng' },
+      { maMon: 'TS02', tenMon: 'Matcha Latte Nhật Bản', nhom: 'Trà sữa', gia: 40000, trangThai: 'Còn hàng' },
+      { maMon: 'DX01', tenMon: 'Sinh Tố Bơ Sáp', nhom: 'Đá xay & Sinh tố', gia: 42000, trangThai: 'Còn hàng' },
+    ],
+    tonKho: [
+      { maNVL: 'NL01', tenNVL: 'Hạt Cà phê Robusta Rang Mộc', dvt: 'Kg', tonDau: 20, nhap: 10, xuat: 12, tonHienTai: 18, canhBao: 5 },
+      { maNVL: 'NL02', tenNVL: 'Sữa đặc Ngôi Sao Phương Nam', dvt: 'Hộp', tonDau: 48, nhap: 24, xuat: 50, tonHienTai: 22, canhBao: 10 },
+      { maNVL: 'NL03', tenNVL: 'Sữa tươi thanh trùng không đường', dvt: 'Lít', tonDau: 15, nhap: 10, xuat: 22, tonHienTai: 3, canhBao: 5 },
+      { maNVL: 'NL04', tenNVL: 'Đào ngâm đóng hộp', dvt: 'Lon', tonDau: 12, nhap: 12, xuat: 14, tonHienTai: 10, canhBao: 4 },
+      { maNVL: 'NL05', tenNVL: 'Ly nhựa PP 500ml + Nắp cầu', dvt: 'Cái', tonDau: 1000, nhap: 500, xuat: 820, tonHienTai: 680, canhBao: 200 },
+    ],
+    nhanSu: [
+      { maNV: 'NV01', tenNV: 'Quản lý Demo (Admin)', username: 'admin', matKhau: '123456', vaiTro: 'ADMIN', luongGio: 35000, trangThai: 'HoatDong', quyen: ['POS', 'THUCHI', 'KHO', 'MENU', 'LUONG', 'TAIKHOAN', 'BAOCAO'] },
+      { maNV: 'NV02', tenNV: 'Trần Minh Anh (Thu ngân sáng)', username: 'nv1', matKhau: '123456', vaiTro: 'STAFF', luongGio: 24000, trangThai: 'HoatDong', quyen: ['POS', 'THUCHI', 'KHO'] },
+      { maNV: 'NV03', tenNV: 'Lê Hoàng Nam (Pha chế chiều)', username: 'nv2', matKhau: '123456', vaiTro: 'STAFF', luongGio: 23000, trangThai: 'HoatDong', quyen: ['POS', 'KHO'] },
+    ],
+    thuChi: [
+      { thoiGian: 'Hôm nay 08:15', loai: 'Chi', hangMuc: 'Mua 5 túi đá bi tinh khiết', ghiChu: 'Giao hàng sáng', soTien: 75000, nguoi: 'Quản lý Demo' },
+      { thoiGian: 'Hôm nay 09:30', loai: 'Chi', hangMuc: 'Mua 2 thùng sữa tươi Đà Lạt', ghiChu: 'Đại lý Minh Anh', soTien: 640000, nguoi: 'Quản lý Demo' },
+      { thoiGian: 'Hôm qua 16:00', loai: 'Thu', hangMuc: 'Khách đặt cọc tiệc sinh nhật', ghiChu: 'Chuyển khoản', soTien: 500000, nguoi: 'Quản lý Demo' },
+    ],
+    lichSuKho: [
+      { maGD: 'NK-102', thoiGian: 'Hôm nay 09:30', loai: 'Nhập kho', tenNVL: 'Sữa tươi thanh trùng không đường', soLuong: 10, dvt: 'Lít', soTien: 320000, nguoi: 'Quản lý Demo', ghiChu: 'Đại lý Minh Anh' },
+      { maGD: 'XK-101', thoiGian: 'Hôm qua 14:00', loai: 'Xuất kho', tenNVL: 'Hạt Cà phê Robusta Rang Mộc', soLuong: 2, dvt: 'Kg', soTien: 0, nguoi: 'Trần Minh Anh', ghiChu: 'Xuất quầy pha chế' },
+    ],
+    bangLuong: [
+      { ngay: '17/11/2026', tenNV: 'Trần Minh Anh (Thu ngân sáng)', soGio: 5, thuongPhat: 20000, thanhTien: 140000, ghiChu: 'Ca sáng + Thưởng doanh số' },
+      { ngay: '17/11/2026', tenNV: 'Lê Hoàng Nam (Pha chế chiều)', soGio: 5, thuongPhat: 0, thanhTien: 115000, ghiChu: 'Ca chiều' },
+    ],
+    donHang: [
+      {
+        maDon: 'HD-202601', gio: '10:25 18/11', ban: 'Bàn 02', tongTien: 88000, giamGia: 0, tien: 88000, httt: 'Chuyển khoản', nv: 'Quản lý Demo',
+        items: [
+          { tenMon: 'Cà phê Muối Huế', soLuong: 2, donGia: 32000, thanhTien: 64000, ghiChu: 'Ít đá' },
+          { tenMon: 'Cà phê Sữa Đá Sài Gòn', soLuong: 1, donGia: 24000, thanhTien: 24000, ghiChu: '' }
+        ]
+      },
+      {
+        maDon: 'HD-202602', gio: '11:10 18/11', ban: 'Mang về', tongTien: 70000, giamGia: 5000, tien: 65000, httt: 'Tiền mặt', nv: 'Trần Minh Anh',
+        items: [
+          { tenMon: 'Trà Đào Cam Sả', soLuong: 2, donGia: 35000, thanhTien: 70000, ghiChu: 'Thêm đào' }
+        ]
+      }
+    ]
+  };
+
+  function handleDemoAction(prop, args) {
+    const nowStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' Hôm nay';
+    switch (prop) {
+      case 'dangNhap':
+        return { success: true, user: DEMO_STATE.nhanSu[0], initData: { menu: DEMO_STATE.menu, tonKho: DEMO_STATE.tonKho, nhanSu: DEMO_STATE.nhanSu } };
+      case 'taoDonHang': {
+        const p = args[0];
+        const maDon = 'HD-' + String(Math.floor(100000 + Math.random() * 900000));
+        const thucThu = Math.max(0, Number(p.tongTien) - Number(p.giamGia || 0));
+        DEMO_STATE.donHang.unshift({
+          maDon, gio: nowStr, ban: p.ban, tongTien: p.tongTien, giamGia: p.giamGia || 0, tien: thucThu, httt: p.hinhThucTT, nv: p.nhanVien,
+          items: p.items.map(i => ({ tenMon: i.tenMon, soLuong: i.soLuong, donGia: i.gia, thanhTien: i.gia * i.soLuong, ghiChu: i.ghiChu }))
+        });
+        return { maDon, thoiGian: nowStr };
+      }
+      case 'luuThuChi': {
+        const tc = args[0];
+        DEMO_STATE.thuChi.unshift({ thoiGian: nowStr, loai: tc.loai, hangMuc: tc.hangMuc, ghiChu: tc.ghiChu, soTien: Number(tc.soTien), nguoi: tc.nguoiThucHien });
+        return true;
+      }
+      case 'layDanhSachThuChi':
+        return DEMO_STATE.thuChi;
+      case 'capNhatKho': {
+        const gd = args[0];
+        const item = DEMO_STATE.tonKho.find(k => k.maNVL === gd.maNVL);
+        if (item) {
+          if (gd.loaiGiaoDich === 'NHAP') { item.nhap += gd.soLuong; item.tonHienTai += gd.soLuong; }
+          else { item.xuat += gd.soLuong; item.tonHienTai = Math.max(0, item.tonHienTai - gd.soLuong); }
+          DEMO_STATE.lichSuKho.unshift({
+            maGD: (gd.loaiGiaoDich === 'NHAP' ? 'NK-' : 'XK-') + Date.now().toString().slice(-3),
+            thoiGian: nowStr, loai: gd.loaiGiaoDich === 'NHAP' ? 'Nhập kho' : 'Xuất kho',
+            tenNVL: item.tenNVL, soLuong: gd.soLuong, dvt: item.dvt, soTien: gd.soTien || 0, nguoi: gd.nguoiThucHien, ghiChu: gd.ghiChu
+          });
+          if (gd.tuDongGhiChi && gd.soTien > 0) {
+            DEMO_STATE.thuChi.unshift({ thoiGian: nowStr, loai: 'Chi', hangMuc: 'Nhập kho: ' + item.tenNVL, ghiChu: gd.ghiChu, soTien: gd.soTien, nguoi: gd.nguoiThucHien });
+          }
+        }
+        return { tonKho: DEMO_STATE.tonKho, lichSu: DEMO_STATE.lichSuKho };
+      }
+      case 'layLichSuKho':
+        return DEMO_STATE.lichSuKho;
+      case 'themNguyenVatLieu': {
+        const [ten, dvt, ton, canhBao] = args;
+        DEMO_STATE.tonKho.push({ maNVL: 'NL0' + (DEMO_STATE.tonKho.length + 1), tenNVL: ten, dvt, tonDau: Number(ton), nhap: 0, xuat: 0, tonHienTai: Number(ton), canhBao });
+        return DEMO_STATE.tonKho;
+      }
+      case 'themHoacSuaMon': {
+        const mon = args[0];
+        if (mon.maMon) {
+          const idx = DEMO_STATE.menu.findIndex(m => m.maMon === mon.maMon);
+          if (idx > -1) DEMO_STATE.menu[idx] = { ...mon, gia: Number(mon.gia) };
+        } else {
+          DEMO_STATE.menu.push({ ...mon, maMon: 'M' + Date.now().toString().slice(-3), gia: Number(mon.gia) });
+        }
+        return DEMO_STATE.menu;
+      }
+      case 'themHoacSuaTaiKhoan': {
+        const tk = args[0];
+        if (tk.maNV) {
+          const idx = DEMO_STATE.nhanSu.findIndex(u => String(u.maNV) === String(tk.maNV));
+          if (idx > -1) DEMO_STATE.nhanSu[idx] = { ...tk, luongGio: Number(tk.luongGio) };
+        } else {
+          DEMO_STATE.nhanSu.push({ ...tk, maNV: 'NV0' + (DEMO_STATE.nhanSu.length + 1), luongGio: Number(tk.luongGio) });
+        }
+        return DEMO_STATE.nhanSu;
+      }
+      case 'ghiChamCong': {
+        const cc = args[0];
+        const thanhTien = Number(cc.soGio) * Number(cc.luongGio) + Number(cc.thuongPhat || 0);
+        DEMO_STATE.bangLuong.unshift({ ngay: new Date().toLocaleDateString('vi-VN'), tenNV: cc.tenNV, soGio: cc.soGio, thuongPhat: Number(cc.thuongPhat || 0), thanhTien, ghiChu: cc.ghiChu });
+        const tongQuyLuong = DEMO_STATE.bangLuong.reduce((s, r) => s + r.thanhTien, 0);
+        return { ds: DEMO_STATE.bangLuong, tongQuyLuong };
+      }
+      case 'layBangLuongThang': {
+        const tongQuyLuong = DEMO_STATE.bangLuong.reduce((s, r) => s + r.thanhTien, 0);
+        return { ds: DEMO_STATE.bangLuong, tongQuyLuong };
+      }
+      case 'layBaoCaoQuanTri': {
+        const doanhThuKy = DEMO_STATE.donHang.reduce((s, d) => s + d.tien, 0);
+        const tienMatKy = DEMO_STATE.donHang.filter(d => d.httt === 'Tiền mặt').reduce((s, d) => s + d.tien, 0);
+        const ckKy = DEMO_STATE.donHang.filter(d => d.httt !== 'Tiền mặt').reduce((s, d) => s + d.tien, 0);
+        const chiKy = DEMO_STATE.thuChi.filter(t => t.loai === 'Chi').reduce((s, t) => s + t.soTien, 0);
+        const thuKhacKy = DEMO_STATE.thuChi.filter(t => t.loai === 'Thu').reduce((s, t) => s + t.soTien, 0);
+        const luongKy = DEMO_STATE.bangLuong.reduce((s, r) => s + r.thanhTien, 0);
+        return {
+          doanhThuKy, soDonKy: DEMO_STATE.donHang.length, tienMatKy, ckKy, chiKy, thuKhacKy, luongKy,
+          loiNhuanRongKy: doanhThuKy + thuKhacKy - chiKy - luongKy,
+          dsDonHang: DEMO_STATE.donHang,
+          baoCaoThang: [{ thang: '11/2026', soDon: DEMO_STATE.donHang.length, doanhThu: doanhThuKy, thuKhac: thuKhacKy, chiPhi: chiKy, luong: luongKy, loiNhuan: doanhThuKy + thuKhacKy - chiKy - luongKy }],
+          topMon: [
+            { tenMon: 'Cà phê Muối Huế', sl: 28, doanhThu: 896000 },
+            { tenMon: 'Trà Đào Cam Sả', sl: 24, doanhThu: 840000 },
+            { tenMon: 'Cà phê Sữa Đá Sài Gòn', sl: 35, doanhThu: 875000 }
+          ]
+        };
+      }
+      default:
+        return null;
+    }
+  }
+
   if (typeof google === 'undefined' || !google.script) {
     const createRunner = (onSuccess = () => {}, onFailure = (err) => console.error(err)) => {
       return new Proxy({}, {
@@ -701,7 +858,13 @@
           if (prop === 'withSuccessHandler') return (fn) => createRunner(fn, onFailure);
           if (prop === 'withFailureHandler') return (fn) => createRunner(onSuccess, fn);
           return (...args) => {
-            // Dùng text/plain để tránh lỗi chặn CORS preflight của Google Apps Script
+            if (!GAS_API_URL) {
+              setTimeout(() => {
+                try { onSuccess(handleDemoAction(prop, args)); }
+                catch (e) { onFailure(e); }
+              }, 120);
+              return;
+            }
             fetch(GAS_API_URL, {
               method: 'POST',
               headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -719,6 +882,7 @@
     };
     window.google = { script: { run: createRunner() } };
   }
+
   let currentUser = null;
   let menuList = [];
   let khoList = [];
@@ -747,30 +911,9 @@
   function notifySuccess(title) { Toast.fire({ icon: 'success', title: title }); }
   function notifyError(msg) { Swal.fire({ icon: 'error', title: 'Thông báo', text: msg, confirmButtonColor: '#1e293b' }); }
 
-  // TỰ ĐỘNG GIỮ ĐĂNG NHẬP KHI BẤM F5
+  // TỰ ĐỘNG VÀO THẲNG CHẾ ĐỘ DEMO ADMIN KHI MỞ TRANG
   window.addEventListener('DOMContentLoaded', () => {
-    const saved = localStorage.getItem('cafe_pos_session');
-    if (!saved) return;
-    try {
-      const parsed = JSON.parse(saved);
-      if (parsed && parsed.user && parsed.pass) {
-        if (parsed.cachedRes && parsed.cachedRes.user) {
-          applyLoginResponse(parsed.cachedRes);
-        }
-        // Đồng bộ lại quyền và dữ liệu mới nhất ở nền
-        google.script.run.withSuccessHandler(res => {
-          if (!res.success) {
-            logout();
-            notifyError('Tài khoản đã thay đổi mật khẩu hoặc bị khóa!');
-            return;
-          }
-          localStorage.setItem('cafe_pos_session', JSON.stringify({ user: parsed.user, pass: parsed.pass, cachedRes: res }));
-          applyLoginResponse(res);
-        }).dangNhap(parsed.user, parsed.pass);
-      }
-    } catch (e) {
-      localStorage.removeItem('cafe_pos_session');
-    }
+    applyLoginResponse(handleDemoAction('dangNhap', []));
   });
 
   function applyLoginResponse(res) {
