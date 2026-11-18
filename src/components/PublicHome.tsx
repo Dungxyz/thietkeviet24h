@@ -589,7 +589,7 @@ export function PublicHome({
 
               <div className="pt-4 border-t border-slate-200 flex flex-wrap items-center gap-2.5">
                 <a
-                  href="https://zalo.me/0376449393"
+                  href="https://zalo.me/0962679086"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-xs font-medium transition-colors whitespace-nowrap shrink-0"
