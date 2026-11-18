@@ -4,14 +4,19 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
-      "source": "/adminvd", "destination": "/index.html"
+      "source": "/api/(.*)",
+      "destination": "/api/index"
     },
     {
       "source": "/.well-known/mcp.json",
       "destination": "/api/index"
     },
     {
-      "source": "/((?!api/|src/assets/).*)",
+      "source": "/adminvd",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/((?!api/|assets/|demo-hop-dong|he-thong-pos-quan-ly|quan-ly-thu-chi|favicon\\.svg).*)",
       "destination": "/index.html"
     }
   ],
