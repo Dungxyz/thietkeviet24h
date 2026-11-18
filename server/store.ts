@@ -11,7 +11,15 @@ interface DatabaseState {
 const DATA_DIR = path.resolve(process.cwd(), 'data');
 const DB_PATH = path.join(DATA_DIR, 'db.json');
 
-let memoryStore: DatabaseState | null = null;
+const SUPABASE_URL = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/\/$/, '');
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '';
+
+let localMemoryStore: DatabaseState | null = null;
+let supabaseSeededChecked = false;
+
+function isSupabaseConfigured(): boolean {
+  return Boolean(SUPABASE_URL && SUPABASE_KEY);
+}
 
 function cloneSeed(): DatabaseState {
   return {
@@ -20,39 +28,161 @@ function cloneSeed(): DatabaseState {
   };
 }
 
-function readDb(): DatabaseState {
-  if (memoryStore) {
-    return memoryStore;
-  }
+// Chuyển đổi snake_case (Postgres) <-> camelCase (TypeScript)
+function rowToPost(row: Record<string, unknown>): PostItem {
+  return {
+    id: String(row.id),
+    title: String(row.title ?? ''),
+    slug: String(row.slug ?? ''),
+    type: (row.type as PostType) || 'software',
+    category: String(row.category ?? ''),
+    status: (row.status as PostStatus) || 'published',
+    excerpt: String(row.excerpt ?? ''),
+    content: String(row.content ?? ''),
+    coverImage: String(row.cover_image ?? ''),
+    version: String(row.version ?? ''),
+    platform: String(row.platform ?? ''),
+    fileSize: String(row.file_size ?? ''),
+    downloadUrl: String(row.download_url ?? ''),
+    demoUrl: String(row.demo_url ?? ''),
+    priceLabel: String(row.price_label ?? ''),
+    tags: Array.isArray(row.tags) ? (row.tags as string[]) : [],
+    downloads: Number(row.downloads ?? 0),
+    featured: Boolean(row.featured),
+    author: String(row.author ?? 'Thiết Kế Việt 24h'),
+    createdAt: String(row.created_at ?? new Date().toISOString()),
+    updatedAt: String(row.updated_at ?? new Date().toISOString()),
+  };
+}
 
+function postToRow(post: Partial<PostItem>): Record<string, unknown> {
+  const row: Record<string, unknown> = {};
+  if (post.id !== undefined) row.id = post.id;
+  if (post.title !== undefined) row.title = post.title;
+  if (post.slug !== undefined) row.slug = post.slug;
+  if (post.type !== undefined) row.type = post.type;
+  if (post.category !== undefined) row.category = post.category;
+  if (post.status !== undefined) row.status = post.status;
+  if (post.excerpt !== undefined) row.excerpt = post.excerpt;
+  if (post.content !== undefined) row.content = post.content;
+  if (post.coverImage !== undefined) row.cover_image = post.coverImage;
+  if (post.version !== undefined) row.version = post.version;
+  if (post.platform !== undefined) row.platform = post.platform;
+  if (post.fileSize !== undefined) row.file_size = post.fileSize;
+  if (post.downloadUrl !== undefined) row.download_url = post.downloadUrl;
+  if (post.demoUrl !== undefined) row.demo_url = post.demoUrl;
+  if (post.priceLabel !== undefined) row.price_label = post.priceLabel;
+  if (post.tags !== undefined) row.tags = post.tags;
+  if (post.downloads !== undefined) row.downloads = post.downloads;
+  if (post.featured !== undefined) row.featured = post.featured;
+  if (post.author !== undefined) row.author = post.author;
+  if (post.createdAt !== undefined) row.created_at = post.createdAt;
+  if (post.updatedAt !== undefined) row.updated_at = post.updatedAt;
+  return row;
+}
+
+function rowToLead(row: Record<string, unknown>): LeadItem {
+  return {
+    id: String(row.id),
+    fullName: String(row.full_name ?? ''),
+    phone: String(row.phone ?? ''),
+    email: String(row.email ?? ''),
+    serviceType: String(row.service_type ?? ''),
+    budget: String(row.budget ?? ''),
+    message: String(row.message ?? ''),
+    status: (row.status as LeadStatus) || 'new',
+    createdAt: String(row.created_at ?? new Date().toISOString()),
+  };
+}
+
+function leadToRow(lead: LeadItem): Record<string, unknown> {
+  return {
+    id: lead.id,
+    full_name: lead.fullName,
+    phone: lead.phone,
+    email: lead.email,
+    service_type: lead.serviceType,
+    budget: lead.budget,
+    message: lead.message,
+    status: lead.status,
+    created_at: lead.createdAt,
+  };
+}
+
+async function sbFetch(endpoint: string, init?: RequestInit): Promise<Response> {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${endpoint}`, {
+    ...init,
+    cache: 'no-store',
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      ...(init?.headers || {}),
+    },
+  });
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Supabase REST error (${res.status}): ${errText}`);
+  }
+  return res;
+}
+
+async function ensureSupabaseSeeded(): Promise<void> {
+  if (!isSupabaseConfigured() || supabaseSeededChecked) return;
+  try {
+    const res = await sbFetch('posts?select=id&limit=1');
+    const existing = (await res.json()) as unknown[];
+    if (Array.isArray(existing) && existing.length === 0) {
+      const seed = cloneSeed();
+      if (seed.posts.length > 0) {
+        await sbFetch('posts', {
+          method: 'POST',
+          headers: { Prefer: 'return=minimal' },
+          body: JSON.stringify(seed.posts.map(postToRow)),
+        });
+      }
+      if (seed.leads.length > 0) {
+        await sbFetch('leads', {
+          method: 'POST',
+          headers: { Prefer: 'return=minimal' },
+          body: JSON.stringify(seed.leads.map(leadToRow)),
+        });
+      }
+    }
+    supabaseSeededChecked = true;
+  } catch (err) {
+    console.error('Supabase seed check error:', err);
+  }
+}
+
+// Local file fallback (chỉ dùng khi chạy dev dưới máy chưa gắn Supabase)
+function readLocalDb(): DatabaseState {
+  if (localMemoryStore) return localMemoryStore;
   try {
     if (fs.existsSync(DB_PATH)) {
       const raw = fs.readFileSync(DB_PATH, 'utf-8');
       const parsed = JSON.parse(raw) as Partial<DatabaseState>;
-      memoryStore = {
+      localMemoryStore = {
         posts: Array.isArray(parsed.posts) ? parsed.posts : cloneSeed().posts,
         leads: Array.isArray(parsed.leads) ? parsed.leads : cloneSeed().leads,
       };
-      return memoryStore;
+      return localMemoryStore;
     }
   } catch {
-    // Fallback to seed data if disk read fails
+    // Fallback
   }
-
-  memoryStore = cloneSeed();
-  persistDb(memoryStore);
-  return memoryStore;
+  localMemoryStore = cloneSeed();
+  persistLocalDb(localMemoryStore);
+  return localMemoryStore;
 }
 
-function persistDb(state: DatabaseState): void {
-  memoryStore = state;
+function persistLocalDb(state: DatabaseState): void {
+  localMemoryStore = state;
   try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
     fs.writeFileSync(DB_PATH, JSON.stringify(state, null, 2), 'utf-8');
   } catch {
-    // Serverless environments (e.g., Vercel) have a read-only filesystem; keep in-memory store active.
+    // Ignore on read-only FS
   }
 }
 
@@ -68,14 +198,22 @@ export function slugifyVi(input: string): string {
     .replace(/-+/g, '-');
 }
 
-export function listPosts(filters?: {
+export async function listPosts(filters?: {
   type?: PostType | 'all';
   category?: string;
   status?: PostStatus | 'all';
   q?: string;
-}): PostItem[] {
-  const db = readDb();
-  let items = [...db.posts];
+}): Promise<PostItem[]> {
+  let items: PostItem[];
+
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const res = await sbFetch('posts?select=*&order=updated_at.desc');
+    const rows = (await res.json()) as Record<string, unknown>[];
+    items = rows.map(rowToPost);
+  } else {
+    items = [...readLocalDb().posts];
+  }
 
   if (filters?.type && filters.type !== 'all') {
     items = items.filter((p) => p.type === filters.type);
@@ -100,18 +238,26 @@ export function listPosts(filters?: {
   return items.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 }
 
-export function getPostByIdOrSlug(idOrSlug: string): PostItem | undefined {
-  const db = readDb();
-  return db.posts.find((p) => p.id === idOrSlug || p.slug === idOrSlug);
+export async function getPostByIdOrSlug(idOrSlug: string): Promise<PostItem | undefined> {
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const encoded = encodeURIComponent(idOrSlug);
+    const res = await sbFetch(`posts?or=(id.eq.${encoded},slug.eq.${encoded})&limit=1`);
+    const rows = (await res.json()) as Record<string, unknown>[];
+    return rows[0] ? rowToPost(rows[0]) : undefined;
+  }
+  return readLocalDb().posts.find((p) => p.id === idOrSlug || p.slug === idOrSlug);
 }
 
-export function createPost(
+export async function createPost(
   payload: Omit<PostItem, 'id' | 'downloads' | 'createdAt' | 'updatedAt' | 'slug'> & { slug?: string },
-): PostItem {
-  const db = readDb();
+): Promise<PostItem> {
   const now = new Date().toISOString();
   const baseSlug = slugifyVi(payload.slug?.trim() || payload.title) || `bai-viet-${Date.now()}`;
-  const uniqueSlug = db.posts.some((p) => p.slug === baseSlug) ? `${baseSlug}-${Date.now().toString().slice(-4)}` : baseSlug;
+  const existingPosts = await listPosts();
+  const uniqueSlug = existingPosts.some((p) => p.slug === baseSlug)
+    ? `${baseSlug}-${Date.now().toString().slice(-4)}`
+    : baseSlug;
 
   const newPost: PostItem = {
     ...payload,
@@ -122,17 +268,26 @@ export function createPost(
     updatedAt: now,
   };
 
+  if (isSupabaseConfigured()) {
+    const res = await sbFetch('posts', {
+      method: 'POST',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify(postToRow(newPost)),
+    });
+    const rows = (await res.json()) as Record<string, unknown>[];
+    return rows[0] ? rowToPost(rows[0]) : newPost;
+  }
+
+  const db = readLocalDb();
   db.posts.unshift(newPost);
-  persistDb(db);
+  persistLocalDb(db);
   return newPost;
 }
 
-export function updatePost(id: string, patch: Partial<PostItem>): PostItem | null {
-  const db = readDb();
-  const idx = db.posts.findIndex((p) => p.id === id);
-  if (idx === -1) return null;
+export async function updatePost(id: string, patch: Partial<PostItem>): Promise<PostItem | null> {
+  const existing = await getPostByIdOrSlug(id);
+  if (!existing) return null;
 
-  const existing = db.posts[idx];
   const updated: PostItem = {
     ...existing,
     ...patch,
@@ -141,73 +296,128 @@ export function updatePost(id: string, patch: Partial<PostItem>): PostItem | nul
     updatedAt: new Date().toISOString(),
   };
 
+  if (isSupabaseConfigured()) {
+    const res = await sbFetch(`posts?id=eq.${encodeURIComponent(existing.id)}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify(postToRow(updated)),
+    });
+    const rows = (await res.json()) as Record<string, unknown>[];
+    return rows[0] ? rowToPost(rows[0]) : updated;
+  }
+
+  const db = readLocalDb();
+  const idx = db.posts.findIndex((p) => p.id === id);
+  if (idx === -1) return null;
   db.posts[idx] = updated;
-  persistDb(db);
+  persistLocalDb(db);
   return updated;
 }
 
-export function deletePost(id: string): boolean {
-  const db = readDb();
+export async function deletePost(id: string): Promise<boolean> {
+  if (isSupabaseConfigured()) {
+    const res = await sbFetch(`posts?id=eq.${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: { Prefer: 'return=representation' },
+    });
+    const rows = (await res.json()) as unknown[];
+    return Array.isArray(rows) && rows.length > 0;
+  }
+
+  const db = readLocalDb();
   const initialLen = db.posts.length;
   db.posts = db.posts.filter((p) => p.id !== id);
   if (db.posts.length === initialLen) return false;
-  persistDb(db);
+  persistLocalDb(db);
   return true;
 }
 
-export function incrementPostDownload(id: string): PostItem | null {
-  const db = readDb();
-  const item = db.posts.find((p) => p.id === id);
+export async function incrementPostDownload(id: string): Promise<PostItem | null> {
+  const item = await getPostByIdOrSlug(id);
   if (!item) return null;
-  item.downloads += 1;
-  persistDb(db);
-  return item;
+  return updatePost(item.id, { downloads: item.downloads + 1 });
 }
 
-export function listLeads(): LeadItem[] {
-  const db = readDb();
+export async function listLeads(): Promise<LeadItem[]> {
+  if (isSupabaseConfigured()) {
+    await ensureSupabaseSeeded();
+    const res = await sbFetch('leads?select=*&order=created_at.desc');
+    const rows = (await res.json()) as Record<string, unknown>[];
+    return rows.map(rowToLead);
+  }
+  const db = readLocalDb();
   return [...db.leads].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
-export function createLead(payload: Omit<LeadItem, 'id' | 'status' | 'createdAt'>): LeadItem {
-  const db = readDb();
+export async function createLead(payload: Omit<LeadItem, 'id' | 'status' | 'createdAt'>): Promise<LeadItem> {
   const newLead: LeadItem = {
     ...payload,
     id: `lead-${Date.now()}`,
     status: 'new',
     createdAt: new Date().toISOString(),
   };
+
+  if (isSupabaseConfigured()) {
+    const res = await sbFetch('leads', {
+      method: 'POST',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify(leadToRow(newLead)),
+    });
+    const rows = (await res.json()) as Record<string, unknown>[];
+    return rows[0] ? rowToLead(rows[0]) : newLead;
+  }
+
+  const db = readLocalDb();
   db.leads.unshift(newLead);
-  persistDb(db);
+  persistLocalDb(db);
   return newLead;
 }
 
-export function updateLeadStatus(id: string, status: LeadStatus): LeadItem | null {
-  const db = readDb();
+export async function updateLeadStatus(id: string, status: LeadStatus): Promise<LeadItem | null> {
+  if (isSupabaseConfigured()) {
+    const res = await sbFetch(`leads?id=eq.${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify({ status }),
+    });
+    const rows = (await res.json()) as Record<string, unknown>[];
+    return rows[0] ? rowToLead(rows[0]) : null;
+  }
+
+  const db = readLocalDb();
   const lead = db.leads.find((l) => l.id === id);
   if (!lead) return null;
   lead.status = status;
-  persistDb(db);
+  persistLocalDb(db);
   return lead;
 }
 
-export function deleteLead(id: string): boolean {
-  const db = readDb();
+export async function deleteLead(id: string): Promise<boolean> {
+  if (isSupabaseConfigured()) {
+    const res = await sbFetch(`leads?id=eq.${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: { Prefer: 'return=representation' },
+    });
+    const rows = (await res.json()) as unknown[];
+    return Array.isArray(rows) && rows.length > 0;
+  }
+
+  const db = readLocalDb();
   const initialLen = db.leads.length;
   db.leads = db.leads.filter((l) => l.id !== id);
   if (db.leads.length === initialLen) return false;
-  persistDb(db);
+  persistLocalDb(db);
   return true;
 }
 
-export function getAdminStats(): AdminStats {
-  const db = readDb();
+export async function getAdminStats(): Promise<AdminStats> {
+  const [posts, leads] = await Promise.all([listPosts(), listLeads()]);
   return {
-    totalPosts: db.posts.length,
-    publishedPosts: db.posts.filter((p) => p.status === 'published').length,
-    draftPosts: db.posts.filter((p) => p.status === 'draft').length,
-    totalDownloads: db.posts.reduce((acc, p) => acc + p.downloads, 0),
-    totalLeads: db.leads.length,
-    newLeads: db.leads.filter((l) => l.status === 'new').length,
+    totalPosts: posts.length,
+    publishedPosts: posts.filter((p) => p.status === 'published').length,
+    draftPosts: posts.filter((p) => p.status === 'draft').length,
+    totalDownloads: posts.reduce((acc, p) => acc + p.downloads, 0),
+    totalLeads: leads.length,
+    newLeads: leads.filter((l) => l.status === 'new').length,
   };
 }

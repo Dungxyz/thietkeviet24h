@@ -130,10 +130,10 @@ export function getWellKnownMcpManifest(origin: string) {
   };
 }
 
-export function handleMcpJsonRpc(
+export async function handleMcpJsonRpc(
   reqBody: McpJsonRpcRequest,
   isAuthorizedWrite: boolean,
-): McpJsonRpcResponse {
+): Promise<McpJsonRpcResponse> {
   const id = reqBody.id ?? null;
 
   if (!reqBody || reqBody.jsonrpc !== '2.0' || !reqBody.method) {
@@ -183,7 +183,7 @@ export function handleMcpJsonRpc(
     case 'resources/read': {
       const uri = String(reqBody.params?.uri ?? '');
       if (uri === 'thietkeviet24h://catalog/posts') {
-        const posts = listPosts({ status: 'published' });
+        const posts = await listPosts({ status: 'published' });
         return {
           jsonrpc: '2.0',
           id,
@@ -199,7 +199,7 @@ export function handleMcpJsonRpc(
         };
       }
       if (uri === 'thietkeviet24h://services/webapp') {
-        const webapps = listPosts({ type: 'webapp', status: 'published' });
+        const webapps = await listPosts({ type: 'webapp', status: 'published' });
         return {
           jsonrpc: '2.0',
           id,
@@ -228,9 +228,8 @@ export function handleMcpJsonRpc(
       if (toolName === 'list_software_utilities') {
         const category = typeof args.category === 'string' ? args.category : undefined;
         const query = typeof args.query === 'string' ? args.query : undefined;
-        const software = listPosts({ status: 'published', category, q: query }).filter(
-          (p) => p.type === 'software' || p.type === 'tutorial',
-        );
+        const allPosts = await listPosts({ status: 'published', category, q: query });
+        const software = allPosts.filter((p) => p.type === 'software' || p.type === 'tutorial');
         return {
           jsonrpc: '2.0',
           id,
@@ -261,7 +260,7 @@ export function handleMcpJsonRpc(
 
       if (toolName === 'list_webapp_solutions') {
         const query = typeof args.query === 'string' ? args.query : undefined;
-        const webapps = listPosts({ type: 'webapp', status: 'published', q: query });
+        const webapps = await listPosts({ type: 'webapp', status: 'published', q: query });
         return {
           jsonrpc: '2.0',
           id,
@@ -290,7 +289,7 @@ export function handleMcpJsonRpc(
 
       if (toolName === 'get_post_detail') {
         const slugOrId = String(args.slugOrId ?? '');
-        const post = getPostByIdOrSlug(slugOrId);
+        const post = await getPostByIdOrSlug(slugOrId);
         if (!post) {
           return {
             jsonrpc: '2.0',
@@ -324,7 +323,7 @@ export function handleMcpJsonRpc(
             },
           };
         }
-        const lead = createLead({
+        const lead = await createLead({
           fullName,
           phone,
           email: String(args.email ?? ''),
@@ -373,7 +372,7 @@ export function handleMcpJsonRpc(
             },
           };
         }
-        const created = createPost({
+        const created = await createPost({
           title,
           type,
           category,

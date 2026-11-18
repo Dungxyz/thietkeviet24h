@@ -73,7 +73,11 @@ export function createApp() {
   });
 
   app.get('/api/health', (_req, res) => {
-    res.json({ ok: true, service: 'thietkeviet24h', mcp: MCP_SERVER_INFO });
+    const hasRedis = Boolean(
+      (process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL) &&
+      (process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN)
+    );
+    res.json({ ok: true, service: 'thietkeviet24h', storage: hasRedis ? 'upstash-redis' : 'local-file', mcp: MCP_SERVER_INFO });
   });
 
   // MCP Discovery & JSON-RPC 2.0 Endpoint
@@ -92,12 +96,12 @@ export function createApp() {
     });
   });
 
-  app.post('/api/mcp', (req, res) => {
+  app.post('/api/mcp', async (req, res) => {
     const mcpKey = process.env.MCP_API_KEY?.trim();
     const bearer = extractBearer(req);
     const isAuthorizedWrite = !mcpKey || bearer === mcpKey || verifyToken(bearer);
     const rpcReq = req.body as McpJsonRpcRequest;
-    const rpcRes = handleMcpJsonRpc(rpcReq, isAuthorizedWrite);
+    const rpcRes = await handleMcpJsonRpc(rpcReq, isAuthorizedWrite);
     res.json(rpcRes);
   });
 
@@ -121,12 +125,13 @@ export function createApp() {
     res.json({ ok: true, email: ADMIN_EMAIL });
   });
 
-  app.get('/api/admin/stats', requireAdmin, (_req, res) => {
-    res.json(getAdminStats());
+  app.get('/api/admin/stats', requireAdmin, async (_req, res) => {
+    const stats = await getAdminStats();
+    res.json(stats);
   });
 
   // Public & Admin Posts Endpoints
-  app.get('/api/posts', (req, res) => {
+  app.get('/api/posts', async (req, res) => {
     const type = (req.query.type as PostType | 'all') || 'all';
     const category = (req.query.category as string) || 'all';
     const q = (req.query.q as string) || '';
@@ -134,7 +139,7 @@ export function createApp() {
     const requestedStatus = (req.query.status as PostStatus | 'all') || 'published';
     const effectiveStatus = isAdmin ? requestedStatus : 'published';
 
-    const items = listPosts({
+    const items = await listPosts({
       type,
       category,
       status: effectiveStatus,
@@ -143,8 +148,8 @@ export function createApp() {
     res.json({ posts: items });
   });
 
-  app.get('/api/posts/:idOrSlug', (req, res) => {
-    const post = getPostByIdOrSlug(req.params.idOrSlug);
+  app.get('/api/posts/:idOrSlug', async (req, res) => {
+    const post = await getPostByIdOrSlug(req.params.idOrSlug);
     if (!post) {
       res.status(404).json({ error: 'Không tìm thấy bài viết.' });
       return;
@@ -156,7 +161,7 @@ export function createApp() {
     res.json({ post });
   });
 
-  app.post('/api/posts', requireAdmin, (req, res) => {
+  app.post('/api/posts', requireAdmin, async (req, res) => {
     const body = req.body as Record<string, unknown>;
     const title = String(body.title ?? '').trim();
     const excerpt = String(body.excerpt ?? '').trim();
@@ -167,7 +172,7 @@ export function createApp() {
       return;
     }
 
-    const post = createPost({
+    const post = await createPost({
       title,
       slug: typeof body.slug === 'string' ? body.slug : undefined,
       type: (body.type as PostType) || 'software',
@@ -195,7 +200,7 @@ export function createApp() {
     res.status(201).json({ post });
   });
 
-  app.put('/api/posts/:id', requireAdmin, (req, res) => {
+  app.put('/api/posts/:id', requireAdmin, async (req, res) => {
     const body = req.body as Record<string, unknown>;
     const patch: Record<string, unknown> = { ...body };
     if (typeof body.tags === 'string') {
@@ -205,7 +210,7 @@ export function createApp() {
         .filter(Boolean);
     }
 
-    const updated = updatePost(req.params.id, patch);
+    const updated = await updatePost(req.params.id, patch);
     if (!updated) {
       res.status(404).json({ error: 'Không tìm thấy bài viết cần cập nhật.' });
       return;
@@ -213,8 +218,8 @@ export function createApp() {
     res.json({ post: updated });
   });
 
-  app.delete('/api/posts/:id', requireAdmin, (req, res) => {
-    const ok = deletePost(req.params.id);
+  app.delete('/api/posts/:id', requireAdmin, async (req, res) => {
+    const ok = await deletePost(req.params.id);
     if (!ok) {
       res.status(404).json({ error: 'Không tìm thấy bài viết cần xóa.' });
       return;
@@ -222,8 +227,8 @@ export function createApp() {
     res.json({ ok: true });
   });
 
-  app.post('/api/posts/:id/download', (req, res) => {
-    const updated = incrementPostDownload(req.params.id);
+  app.post('/api/posts/:id/download', async (req, res) => {
+    const updated = await incrementPostDownload(req.params.id);
     if (!updated) {
       res.status(404).json({ error: 'Không tìm thấy bài viết.' });
       return;
@@ -232,11 +237,12 @@ export function createApp() {
   });
 
   // Consultation Leads Endpoints
-  app.get('/api/leads', requireAdmin, (_req, res) => {
-    res.json({ leads: listLeads() });
+  app.get('/api/leads', requireAdmin, async (_req, res) => {
+    const leads = await listLeads();
+    res.json({ leads });
   });
 
-  app.post('/api/leads', (req, res) => {
+  app.post('/api/leads', async (req, res) => {
     const body = req.body as Record<string, unknown>;
     const fullName = String(body.fullName ?? '').trim();
     const phone = String(body.phone ?? '').trim();
@@ -261,17 +267,17 @@ export function createApp() {
       return;
     }
 
-    const lead = createLead({ fullName, phone, email, serviceType, budget, message });
+    const lead = await createLead({ fullName, phone, email, serviceType, budget, message });
     res.status(201).json({ lead });
   });
 
-  app.patch('/api/leads/:id', requireAdmin, (req, res) => {
+  app.patch('/api/leads/:id', requireAdmin, async (req, res) => {
     const status = req.body?.status as LeadStatus;
     if (!['new', 'consulting', 'completed'].includes(status)) {
       res.status(400).json({ error: 'Trạng thái không hợp lệ.' });
       return;
     }
-    const updated = updateLeadStatus(req.params.id, status);
+    const updated = await updateLeadStatus(req.params.id, status);
     if (!updated) {
       res.status(404).json({ error: 'Không tìm thấy yêu cầu tư vấn.' });
       return;
@@ -279,8 +285,8 @@ export function createApp() {
     res.json({ lead: updated });
   });
 
-  app.delete('/api/leads/:id', requireAdmin, (req, res) => {
-    const ok = deleteLead(req.params.id);
+  app.delete('/api/leads/:id', requireAdmin, async (req, res) => {
+    const ok = await deleteLead(req.params.id);
     if (!ok) {
       res.status(404).json({ error: 'Không tìm thấy yêu cầu.' });
       return;
