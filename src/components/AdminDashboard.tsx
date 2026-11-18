@@ -9,6 +9,7 @@ import {
   Plus,
   Search,
   Trash2,
+  Upload,
 } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ASSET_IMAGES } from '../shared/seedData.ts';
@@ -107,11 +108,68 @@ export function AdminDashboard({ onPostsChanged, onBackHome, onPreviewPost }: Ad
   const [editorPreview, setEditorPreview] = useState(false);
   const [savingPost, setSavingPost] = useState(false);
   const [editorNotice, setEditorNotice] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+  const [uploadingCover, setUploadingCover] = useState(false);
 
   const authHeaders = useMemo(
     () => (token ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } : undefined),
     [token],
   );
+
+  async function compressImageToDataUrl(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error('Không đọc được file ảnh'));
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error('File ảnh bị lỗi'));
+        img.onload = () => {
+          const maxWidth = 1280;
+          const scale = img.width > maxWidth ? maxWidth / img.width : 1;
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.round(img.width * scale);
+          canvas.height = Math.round(img.height * scale);
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(String(reader.result));
+            return;
+          }
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          const outMime = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+          resolve(canvas.toDataURL(outMime, 0.84));
+        };
+        img.src = String(reader.result);
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handleCoverFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !authHeaders) return;
+
+    setUploadingCover(true);
+    setEditorNotice(null);
+    try {
+      const dataUrl = await compressImageToDataUrl(file);
+      const res = await fetch('/api/upload-image', {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ dataUrl, fileName: file.name }),
+      });
+      const data = (await res.json()) as { url?: string; error?: string };
+      if (!res.ok || !data.url) {
+        setEditorNotice({ kind: 'err', text: data.error || 'Tải ảnh thất bại.' });
+        return;
+      }
+      setCoverImage(data.url);
+      setEditorNotice({ kind: 'ok', text: 'Đã tải ảnh lên Supabase Storage thành công.' });
+    } catch {
+      setEditorNotice({ kind: 'err', text: 'Không thể xử lý hoặc tải file ảnh lên máy chủ.' });
+    } finally {
+      setUploadingCover(false);
+    }
+  }
 
   const loadAdminData = useCallback(async () => {
     if (!token) return;
@@ -1150,12 +1208,46 @@ Mô tả tính năng nổi bật hoặc điểm cải tiến của phiên bản 
                           className="w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg"
                         />
                       </div>
+
+                      <div>
+                        <label htmlFor="post-demo" className="block text-xs font-medium text-slate-700 mb-1">
+                          Đường dẫn chạy thử Demo (WebApp)
+                        </label>
+                        <input
+                          id="post-demo"
+                          type="text"
+                          value={demoUrl}
+                          onChange={(e) => setDemoUrl(e.target.value)}
+                          placeholder="/he-thong-pos-quan-ly/index.html hoặc https://..."
+                          className="w-full px-3 py-1.5 text-xs font-mono bg-white border border-slate-200 rounded-lg"
+                        />
+                      </div>
                     </div>
 
                     <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
-                      <label htmlFor="post-cover" className="block text-xs font-medium text-slate-700">
-                        Ảnh đại diện bài viết
-                      </label>
+                      <div className="flex items-center justify-between gap-2">
+                        <label htmlFor="post-cover" className="block text-xs font-medium text-slate-700">
+                          Ảnh đại diện bài viết
+                        </label>
+                        <label
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                            uploadingCover
+                              ? 'bg-slate-200 text-slate-500 pointer-events-none'
+                              : 'bg-blue-700 hover:bg-blue-800 text-white'
+                          }`}
+                        >
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>{uploadingCover ? 'Đang tải lên...' : 'Tải ảnh từ máy'}</span>
+                          <input
+                            type="file"
+                            accept="image/png,image/jpeg,image/webp"
+                            onChange={handleCoverFileChange}
+                            className="hidden"
+                            disabled={uploadingCover}
+                          />
+                        </label>
+                      </div>
+
                       <select
                         aria-label="Chọn ảnh mẫu có sẵn"
                         value={COVER_PRESETS.some((c) => c.url === coverImage) ? coverImage : 'custom'}
@@ -1169,7 +1261,7 @@ Mô tả tính năng nổi bật hoặc điểm cải tiến của phiên bản 
                             {preset.label}
                           </option>
                         ))}
-                        <option value="custom">Tùy chỉnh đường dẫn ảnh</option>
+                        <option value="custom">Ảnh tải lên / Đường dẫn tùy chỉnh</option>
                       </select>
 
                       <input
@@ -1177,6 +1269,7 @@ Mô tả tính năng nổi bật hoặc điểm cải tiến của phiên bản 
                         type="text"
                         value={coverImage}
                         onChange={(e) => setCoverImage(e.target.value)}
+                        placeholder="https://... hoặc chọn nút Tải ảnh từ máy"
                         className="w-full px-3 py-1.5 text-xs font-mono bg-white border border-slate-200 rounded-lg"
                       />
 

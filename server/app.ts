@@ -243,6 +243,63 @@ export function createApp() {
     res.json({ downloads: updated.downloads });
   });
 
+  // Upload ảnh bìa bài viết lên Supabase Storage
+  app.post('/api/upload-image', requireAdmin, async (req, res) => {
+    const supabaseUrl = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/\/$/, '');
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+    if (!supabaseUrl || !supabaseKey) {
+      res.status(400).json({ error: 'Chưa cấu hình SUPABASE_URL hoặc SUPABASE_SERVICE_ROLE_KEY trên server.' });
+      return;
+    }
+
+    const { dataUrl, fileName } = req.body as { dataUrl?: string; fileName?: string };
+    if (!dataUrl || !dataUrl.startsWith('data:image/')) {
+      res.status(400).json({ error: 'Dữ liệu hình ảnh không hợp lệ.' });
+      return;
+    }
+
+    const match = dataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+    if (!match) {
+      res.status(400).json({ error: 'Không thể giải mã định dạng ảnh.' });
+      return;
+    }
+
+    const mimeType = match[1];
+    const buffer = Buffer.from(match[2], 'base64');
+    const ext = mimeType.includes('png') ? 'png' : mimeType.includes('webp') ? 'webp' : 'jpg';
+    const cleanBase = (fileName || 'cover')
+      .replace(/\.[^.]+$/, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 40) || 'cover';
+    const objectPath = `covers/${Date.now()}-${cleanBase}.${ext}`;
+
+    try {
+      const uploadRes = await fetch(`${supabaseUrl}/storage/v1/object/images/${objectPath}`, {
+        method: 'POST',
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+          'Content-Type': mimeType,
+          'x-upsert': 'true',
+        },
+        body: buffer,
+      });
+
+      if (!uploadRes.ok) {
+        const errText = await uploadRes.text();
+        res.status(500).json({ error: `Lỗi tải lên Supabase Storage (${uploadRes.status}): ${errText}` });
+        return;
+      }
+
+      const publicUrl = `${supabaseUrl}/storage/v1/object/public/images/${objectPath}`;
+      res.json({ url: publicUrl });
+    } catch {
+      res.status(500).json({ error: 'Lỗi kết nối tới Supabase Storage.' });
+    }
+  });
+
   // Consultation Leads Endpoints
   app.get('/api/leads', requireAdmin, async (_req, res) => {
     const leads = await listLeads();
