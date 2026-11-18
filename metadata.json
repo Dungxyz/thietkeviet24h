@@ -1,0 +1,6 @@
+{
+  "name": "Thiết Kế Việt 24h — WebApp & Tiện ích Phần mềm",
+  "description": "Nền tảng giới thiệu dịch vụ thiết kế WebApp tùy biến, giải pháp tự động hóa Google Sheets/AppSheet, chia sẻ kho tiện ích phần mềm chuẩn hóa kèm hệ thống quản trị đăng bài và giao thức MCP sẵn sàng triển khai GitHub/Vercel.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

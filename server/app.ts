@@ -1,0 +1,292 @@
+import express, { type NextFunction, type Request, type Response } from 'express';
+import crypto from 'crypto';
+import type { LeadStatus, McpJsonRpcRequest, PostStatus, PostType } from '../src/shared/types.ts';
+import { getWellKnownMcpManifest, handleMcpJsonRpc, MCP_SERVER_INFO, MCP_TOOLS } from './mcp.ts';
+import {
+  createLead,
+  createPost,
+  deleteLead,
+  deletePost,
+  getAdminStats,
+  getPostByIdOrSlug,
+  incrementPostDownload,
+  listLeads,
+  listPosts,
+  updateLeadStatus,
+  updatePost,
+} from './store.ts';
+
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@thietkeviet24h.vn';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin24h';
+const SESSION_SECRET = process.env.ADMIN_SESSION_SECRET || 'tkv24h-mcp-vercel-secret-key';
+
+function signToken(email: string): string {
+  const payload = Buffer.from(JSON.stringify({ email, exp: Date.now() + 1000 * 60 * 60 * 24 * 7 })).toString('base64url');
+  const sig = crypto.createHmac('sha256', SESSION_SECRET).update(payload).digest('base64url');
+  return `${payload}.${sig}`;
+}
+
+function verifyToken(token: string | undefined): boolean {
+  if (!token) return false;
+  const parts = token.split('.');
+  if (parts.length !== 2) return false;
+  const [payload, sig] = parts;
+  const expectedSig = crypto.createHmac('sha256', SESSION_SECRET).update(payload).digest('base64url');
+  if (sig !== expectedSig) return false;
+  try {
+    const parsed = JSON.parse(Buffer.from(payload, 'base64url').toString('utf-8')) as { exp?: number };
+    return Boolean(parsed.exp && parsed.exp > Date.now());
+  } catch {
+    return false;
+  }
+}
+
+function extractBearer(req: Request): string | undefined {
+  const auth = req.headers.authorization;
+  if (!auth?.startsWith('Bearer ')) return undefined;
+  return auth.slice(7).trim();
+}
+
+function requireAdmin(req: Request, res: Response, next: NextFunction): void {
+  const token = extractBearer(req);
+  if (!verifyToken(token)) {
+    res.status(401).json({ error: 'Phiên đăng nhập quản trị không hợp lệ hoặc đã hết hạn.' });
+    return;
+  }
+  next();
+}
+
+export function createApp() {
+  const app = express();
+  app.use(express.json({ limit: '4mb' }));
+
+  // CORS for MCP clients & external callers
+  app.use('/api', (_req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    next();
+  });
+
+  app.options('/api/*', (_req, res) => {
+    res.status(204).end();
+  });
+
+  app.get('/api/health', (_req, res) => {
+    res.json({ ok: true, service: 'thietkeviet24h', mcp: MCP_SERVER_INFO });
+  });
+
+  // MCP Discovery & JSON-RPC 2.0 Endpoint
+  app.get('/.well-known/mcp.json', (req, res) => {
+    const proto = (req.headers['x-forwarded-proto'] as string) || req.protocol || 'https';
+    const host = (req.headers['x-forwarded-host'] as string) || req.get('host') || 'localhost:3000';
+    res.json(getWellKnownMcpManifest(`${proto}://${host}`));
+  });
+
+  app.get('/api/mcp', (req, res) => {
+    const proto = (req.headers['x-forwarded-proto'] as string) || req.protocol || 'https';
+    const host = (req.headers['x-forwarded-host'] as string) || req.get('host') || 'localhost:3000';
+    res.json({
+      ...getWellKnownMcpManifest(`${proto}://${host}`),
+      toolsDetail: MCP_TOOLS,
+    });
+  });
+
+  app.post('/api/mcp', (req, res) => {
+    const mcpKey = process.env.MCP_API_KEY?.trim();
+    const bearer = extractBearer(req);
+    const isAuthorizedWrite = !mcpKey || bearer === mcpKey || verifyToken(bearer);
+    const rpcReq = req.body as McpJsonRpcRequest;
+    const rpcRes = handleMcpJsonRpc(rpcReq, isAuthorizedWrite);
+    res.json(rpcRes);
+  });
+
+  // Admin Authentication
+  app.post('/api/admin/login', (req, res) => {
+    const { email, password } = req.body as { email?: string; password?: string };
+    if (email?.trim().toLowerCase() === ADMIN_EMAIL.toLowerCase() && password === ADMIN_PASSWORD) {
+      const token = signToken(ADMIN_EMAIL);
+      res.json({ ok: true, token, email: ADMIN_EMAIL });
+      return;
+    }
+    res.status(401).json({ error: 'Email hoặc mật khẩu quản trị không chính xác.' });
+  });
+
+  app.get('/api/admin/verify', (req, res) => {
+    const token = extractBearer(req);
+    if (!verifyToken(token)) {
+      res.status(401).json({ ok: false });
+      return;
+    }
+    res.json({ ok: true, email: ADMIN_EMAIL });
+  });
+
+  app.get('/api/admin/stats', requireAdmin, (_req, res) => {
+    res.json(getAdminStats());
+  });
+
+  // Public & Admin Posts Endpoints
+  app.get('/api/posts', (req, res) => {
+    const type = (req.query.type as PostType | 'all') || 'all';
+    const category = (req.query.category as string) || 'all';
+    const q = (req.query.q as string) || '';
+    const isAdmin = verifyToken(extractBearer(req));
+    const requestedStatus = (req.query.status as PostStatus | 'all') || 'published';
+    const effectiveStatus = isAdmin ? requestedStatus : 'published';
+
+    const items = listPosts({
+      type,
+      category,
+      status: effectiveStatus,
+      q,
+    });
+    res.json({ posts: items });
+  });
+
+  app.get('/api/posts/:idOrSlug', (req, res) => {
+    const post = getPostByIdOrSlug(req.params.idOrSlug);
+    if (!post) {
+      res.status(404).json({ error: 'Không tìm thấy bài viết.' });
+      return;
+    }
+    if (post.status !== 'published' && !verifyToken(extractBearer(req))) {
+      res.status(404).json({ error: 'Bài viết chưa được xuất bản.' });
+      return;
+    }
+    res.json({ post });
+  });
+
+  app.post('/api/posts', requireAdmin, (req, res) => {
+    const body = req.body as Record<string, unknown>;
+    const title = String(body.title ?? '').trim();
+    const excerpt = String(body.excerpt ?? '').trim();
+    const content = String(body.content ?? '').trim();
+
+    if (!title || !excerpt || !content) {
+      res.status(400).json({ error: 'Vui lòng nhập đầy đủ tiêu đề, tóm tắt và nội dung bài viết.' });
+      return;
+    }
+
+    const post = createPost({
+      title,
+      slug: typeof body.slug === 'string' ? body.slug : undefined,
+      type: (body.type as PostType) || 'software',
+      category: String(body.category ?? 'Văn phòng & Tiện ích'),
+      status: (body.status as PostStatus) || 'published',
+      excerpt,
+      content,
+      coverImage: String(body.coverImage ?? '/src/assets/images/software_utilities_cover_1794972111702.jpg'),
+      version: String(body.version ?? '2026.1'),
+      platform: String(body.platform ?? 'Windows 10/11'),
+      fileSize: String(body.fileSize ?? 'Đang cập nhật'),
+      downloadUrl: String(body.downloadUrl ?? ''),
+      demoUrl: String(body.demoUrl ?? ''),
+      priceLabel: String(body.priceLabel ?? 'Miễn phí chia sẻ'),
+      tags: Array.isArray(body.tags)
+        ? body.tags.map((t) => String(t).trim()).filter(Boolean)
+        : String(body.tags ?? '')
+            .split(',')
+            .map((t) => t.trim())
+            .filter(Boolean),
+      featured: Boolean(body.featured),
+      author: String(body.author ?? 'Thiết Kế Việt 24h'),
+    });
+
+    res.status(201).json({ post });
+  });
+
+  app.put('/api/posts/:id', requireAdmin, (req, res) => {
+    const body = req.body as Record<string, unknown>;
+    const patch: Record<string, unknown> = { ...body };
+    if (typeof body.tags === 'string') {
+      patch.tags = body.tags
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean);
+    }
+
+    const updated = updatePost(req.params.id, patch);
+    if (!updated) {
+      res.status(404).json({ error: 'Không tìm thấy bài viết cần cập nhật.' });
+      return;
+    }
+    res.json({ post: updated });
+  });
+
+  app.delete('/api/posts/:id', requireAdmin, (req, res) => {
+    const ok = deletePost(req.params.id);
+    if (!ok) {
+      res.status(404).json({ error: 'Không tìm thấy bài viết cần xóa.' });
+      return;
+    }
+    res.json({ ok: true });
+  });
+
+  app.post('/api/posts/:id/download', (req, res) => {
+    const updated = incrementPostDownload(req.params.id);
+    if (!updated) {
+      res.status(404).json({ error: 'Không tìm thấy bài viết.' });
+      return;
+    }
+    res.json({ downloads: updated.downloads });
+  });
+
+  // Consultation Leads Endpoints
+  app.get('/api/leads', requireAdmin, (_req, res) => {
+    res.json({ leads: listLeads() });
+  });
+
+  app.post('/api/leads', (req, res) => {
+    const body = req.body as Record<string, unknown>;
+    const fullName = String(body.fullName ?? '').trim();
+    const phone = String(body.phone ?? '').trim();
+    const email = String(body.email ?? '').trim();
+    const serviceType = String(body.serviceType ?? 'Thiết kế WebApp theo yêu cầu').trim();
+    const budget = String(body.budget ?? 'Theo tư vấn').trim();
+    const message = String(body.message ?? '').trim();
+
+    if (!fullName || !phone) {
+      res.status(400).json({ error: 'Vui lòng nhập họ tên và số điện thoại liên hệ.' });
+      return;
+    }
+
+    const phoneDigits = phone.replace(/\D/g, '');
+    if (phoneDigits.length < 9 || phoneDigits.length > 12) {
+      res.status(400).json({ error: 'Số điện thoại không hợp lệ (cần từ 9 đến 12 chữ số).' });
+      return;
+    }
+
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      res.status(400).json({ error: 'Định dạng email không hợp lệ.' });
+      return;
+    }
+
+    const lead = createLead({ fullName, phone, email, serviceType, budget, message });
+    res.status(201).json({ lead });
+  });
+
+  app.patch('/api/leads/:id', requireAdmin, (req, res) => {
+    const status = req.body?.status as LeadStatus;
+    if (!['new', 'consulting', 'completed'].includes(status)) {
+      res.status(400).json({ error: 'Trạng thái không hợp lệ.' });
+      return;
+    }
+    const updated = updateLeadStatus(req.params.id, status);
+    if (!updated) {
+      res.status(404).json({ error: 'Không tìm thấy yêu cầu tư vấn.' });
+      return;
+    }
+    res.json({ lead: updated });
+  });
+
+  app.delete('/api/leads/:id', requireAdmin, (req, res) => {
+    const ok = deleteLead(req.params.id);
+    if (!ok) {
+      res.status(404).json({ error: 'Không tìm thấy yêu cầu.' });
+      return;
+    }
+    res.json({ ok: true });
+  });
+
+  return app;
+}
