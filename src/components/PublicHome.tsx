@@ -140,7 +140,7 @@ export function PublicHome({
                 thietkeviet24h.vn · Giải pháp WebApp &amp; Phần mềm
               </p>
               <h1 className="mt-3 font-display text-[clamp(2.15rem,3.8vw,3.35rem)] font-bold text-slate-900 leading-[1.12] tracking-tight text-balance">
-                Thiết kế WebApp theo yêu cầu và kho tiện ích phần mềm.
+                Thiết kế WebApp theo yêu cầu.
               </h1>
               <p className="mt-5 text-base text-slate-600 leading-relaxed max-w-xl">
                 Xây dựng ứng dụng web quản trị nội bộ, POS bán hàng và tự động hóa quy trình đồng bộ
