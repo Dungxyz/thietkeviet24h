@@ -1,5 +1,5 @@
-import { ArrowRight, Download, ExternalLink, X } from 'lucide-react';
-import { useState } from 'react';
+import { ArrowRight, Clock, Download, ExternalLink, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import type { PostItem } from '../shared/types.ts';
 import { MarkdownContent } from './MarkdownContent.tsx';
 import { SafeImage } from './SafeImage.tsx';
@@ -19,6 +19,33 @@ export function PostDetailModal({
 }: PostDetailModalProps) {
   const [downloadMessage, setDownloadMessage] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const [linkReady, setLinkReady] = useState(false);
+
+  // Reset trạng thái tải mỗi khi mở bài viết khác
+  useEffect(() => {
+    setCountdown(null);
+    setLinkReady(false);
+    setDownloadMessage(null);
+    setDownloading(false);
+  }, [post?.id]);
+
+  // Bộ đếm ngược 10 giây
+  useEffect(() => {
+    if (countdown === null) return;
+
+    if (countdown <= 0) {
+      setCountdown(null);
+      void finalizeDownload();
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setCountdown((prev) => (prev !== null ? prev - 1 : null));
+    }, 1000);
+
+    return () => window.clearTimeout(timer);
+  }, [countdown]);
 
   if (!post) return null;
 
@@ -50,10 +77,20 @@ export function PostDetailModal({
     return '';
   })();
 
-  async function handleDownload() {
+  function startDownloadCountdown() {
+    if (countdown !== null || downloading) return;
+    if (linkReady && post?.downloadUrl && post.downloadUrl.startsWith('http')) {
+      window.open(post.downloadUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    setDownloadMessage(null);
+    setLinkReady(false);
+    setCountdown(10);
+  }
+
+  async function finalizeDownload() {
     if (!post) return;
     setDownloading(true);
-    setDownloadMessage(null);
     try {
       const res = await fetch(`/api/posts/${post.id}/download`, { method: 'POST' });
       if (res.ok) {
@@ -61,14 +98,20 @@ export function PostDetailModal({
         onDownloadTracked(post.id, data.downloads);
       }
       if (post.downloadUrl && post.downloadUrl.startsWith('http')) {
-        setDownloadMessage(`Đã ghi nhận lượt tải. Liên kết tải trực tiếp: ${post.downloadUrl}`);
+        setLinkReady(true);
+        setDownloadMessage('Liên kết tải về tốc độ cao đã sẵn sàng!');
       } else {
         setDownloadMessage(
           'Bộ cài đặt đang được cung cấp qua bộ phận kỹ thuật. Vui lòng liên hệ Zalo 0376.449.393 hoặc để lại thông tin để nhận link tốc độ cao.',
         );
       }
     } catch {
-      setDownloadMessage('Không thể kết nối máy chủ ghi nhận lượt tải, vui lòng thử lại.');
+      if (post.downloadUrl && post.downloadUrl.startsWith('http')) {
+        setLinkReady(true);
+        setDownloadMessage('Liên kết tải về đã sẵn sàng!');
+      } else {
+        setDownloadMessage('Không thể kết nối máy chủ ghi nhận lượt tải, vui lòng thử lại.');
+      }
     } finally {
       setDownloading(false);
     }
@@ -155,22 +198,33 @@ export function PostDetailModal({
             </div>
           )}
 
-          {downloadMessage && (
-            <div className="p-4 rounded-lg bg-blue-50 border border-blue-200 text-sm text-slate-800 flex items-start justify-between gap-3">
-              <div className="space-y-1">
-                <p className="font-medium text-blue-900">{downloadMessage}</p>
-                {post.downloadUrl && post.downloadUrl.startsWith('http') && (
-                  <a
-                    href={post.downloadUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-blue-700 font-medium hover:underline"
-                  >
-                    Mở liên kết tải trong tab mới
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                )}
+          {countdown !== null && (
+            <div className="p-4 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-900 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <Clock className="w-4 h-4 text-amber-600 shrink-0 animate-pulse" />
+                <span>
+                  Hệ thống đang kiểm tra tệp tin và tạo liên kết tải trực tiếp, vui lòng chờ{' '}
+                  <strong className="font-mono text-base text-amber-700">{countdown}s</strong>...
+                </span>
               </div>
+            </div>
+          )}
+
+          {downloadMessage && (
+            <div className="p-4 rounded-lg bg-blue-50 border border-blue-200 text-sm text-slate-800 flex flex-wrap items-center justify-between gap-3">
+              <p className="font-medium text-blue-900">{downloadMessage}</p>
+              {linkReady && post.downloadUrl && post.downloadUrl.startsWith('http') && (
+                <a
+                  href={post.downloadUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition-colors shrink-0"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Tải xuống ngay
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              )}
             </div>
           )}
         </div>
@@ -206,12 +260,31 @@ export function PostDetailModal({
             ) : (
               <button
                 type="button"
-                disabled={downloading}
-                onClick={handleDownload}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-700 hover:bg-blue-800 disabled:opacity-60 text-white text-sm font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                disabled={downloading || countdown !== null}
+                onClick={startDownloadCountdown}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-700 hover:bg-blue-800 disabled:opacity-70 text-white text-sm font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer"
               >
-                <Download className="w-4 h-4" />
-                {downloading ? 'Đang xử lý...' : 'Tải tiện ích & Hướng dẫn'}
+                {countdown !== null ? (
+                  <>
+                    <Clock className="w-4 h-4" />
+                    Vui lòng chờ ({countdown}s)...
+                  </>
+                ) : downloading ? (
+                  <>
+                    <Download className="w-4 h-4" />
+                    Đang tạo liên kết...
+                  </>
+                ) : linkReady ? (
+                  <>
+                    <ExternalLink className="w-4 h-4" />
+                    Mở lại link tải về
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4" />
+                    Tải tiện ích &amp; Hướng dẫn
+                  </>
+                )}
               </button>
             )}
           </div>
