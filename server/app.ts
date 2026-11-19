@@ -108,7 +108,6 @@ export function createApp() {
   const app = express();
   app.use(express.json({ limit: '4mb' }));
 
-  // CORS for MCP clients & external callers
   app.use('/api', (_req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
@@ -131,14 +130,11 @@ export function createApp() {
       storage: hasSupabase ? 'supabase' : 'local-file',
       hasUrl: Boolean(process.env.SUPABASE_URL),
       hasKey: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
-      hasZaloBot: Boolean(
-        (process.env.ZALO_BOT_TOKEN && process.env.ZALO_CHAT_ID) || process.env.ZALO_WEBHOOK_URL
-      ),
+      hasZaloBot: Boolean(process.env.ZALO_BOT_TOKEN && process.env.ZALO_CHAT_ID),
       mcp: MCP_SERVER_INFO,
     });
   });
 
-  // MCP Discovery & JSON-RPC 2.0 Endpoint
   app.get('/.well-known/mcp.json', (req, res) => {
     const proto = (req.headers['x-forwarded-proto'] as string) || req.protocol || 'https';
     const host = (req.headers['x-forwarded-host'] as string) || req.get('host') || 'localhost:3000';
@@ -163,7 +159,6 @@ export function createApp() {
     res.json(rpcRes);
   });
 
-  // Admin Authentication
   app.post('/api/admin/login', (req, res) => {
     const { email, password } = req.body as { email?: string; password?: string };
     if (email?.trim().toLowerCase() === ADMIN_EMAIL.toLowerCase() && password === ADMIN_PASSWORD) {
@@ -188,7 +183,6 @@ export function createApp() {
     res.json(stats);
   });
 
-  // Public & Admin Posts Endpoints
   app.get('/api/posts', async (req, res) => {
     const type = (req.query.type as PostType | 'all') || 'all';
     const category = (req.query.category as string) || 'all';
@@ -294,7 +288,6 @@ export function createApp() {
     res.json({ downloads: updated.downloads });
   });
 
-  // Upload ảnh bìa bài viết lên Supabase Storage
   app.post('/api/upload-image', requireAdmin, async (req, res) => {
     const supabaseUrl = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/\/$/, '');
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -351,61 +344,54 @@ export function createApp() {
     }
   });
 
-  // Consultation Leads Endpoints
   app.get('/api/leads', requireAdmin, async (_req, res) => {
     const leads = await listLeads();
     res.json({ leads });
   });
 
   app.post('/api/leads', async (req, res) => {
-    const body = req.body as Record<string, unknown>;
-    const fullName = String(body.fullName ?? '').trim();
-    const phone = String(body.phone ?? '').trim();
-    const email = String(body.email ?? '').trim();
-    const serviceType = String(body.serviceType ?? 'Thiết kế WebApp theo yêu cầu').trim();
-    const budget = String(body.budget ?? 'Theo tư vấn').trim();
-    const message = String(body.message ?? '').trim();
+    try {
+      const body = req.body as Record<string, unknown>;
+      const fullName = String(body.fullName ?? '').trim();
+      const phone = String(body.phone ?? '').trim();
+      const email = String(body.email ?? '').trim();
+      const serviceType = String(body.serviceType ?? 'Thiết kế WebApp theo yêu cầu').trim();
+      const budget = String(body.budget ?? 'Theo tư vấn').trim();
+      const message = String(body.message ?? '').trim();
 
-    if (!fullName || !phone) {
-      res.status(400).json({ error: 'Vui lòng nhập họ tên và số điện thoại liên hệ.' });
-      return;
+      if (!fullName || !phone) {
+        res.status(400).json({ error: 'Vui lòng nhập họ tên và số điện thoại liên hệ.' });
+        return;
+      }
+
+      const phoneDigits = phone.replace(/\D/g, '');
+      if (phoneDigits.length < 9 || phoneDigits.length > 12) {
+        res.status(400).json({ error: 'Số điện thoại không hợp lệ (cần từ 9 đến 12 chữ số).' });
+        return;
+      }
+
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        res.status(400).json({ error: 'Định dạng email không hợp lệ.' });
+        return;
+      }
+
+      const lead = await createLead({ fullName, phone, email, serviceType, budget, message });
+
+      const zaloStatus = await sendZaloLeadNotification({
+        fullName: lead.fullName,
+        phone: lead.phone,
+        email: lead.email,
+        serviceType: lead.serviceType,
+        budget: lead.budget,
+        message: lead.message,
+      });
+
+      res.status(201).json({ lead, zaloStatus });
+    } catch (err) {
+      console.error('POST /api/leads error:', err);
+      res.status(500).json({ error: 'Lỗi xử lý lưu dữ liệu trên máy chủ.' });
     }
-
-    const phoneDigits = phone.replace(/\D/g, '');
-    if (phoneDigits.length < 9 || phoneDigits.length > 12) {
-      res.status(400).json({ error: 'Số điện thoại không hợp lệ (cần từ 9 đến 12 chữ số).' });
-      return;
-    }
-
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      res.status(400).json({ error: 'Định dạng email không hợp lệ.' });
-      return;
-    }
-
-    const lead = await createLead({ fullName, phone, email, serviceType, budget, message });
-
-    await sendZaloLeadNotification({
-      fullName: lead.fullName,
-      phone: lead.phone,
-      email: lead.email,
-      serviceType: lead.serviceType,
-      budget: lead.budget,
-      message: lead.message,
-    });
-
-    res.status(201).json({ lead });
   });
-
-  const zaloStatus = await sendZaloLeadNotification({
-  fullName: lead.fullName,
-  phone: lead.phone,
-  email: lead.email,
-  serviceType: lead.serviceType,
-  budget: lead.budget,
-  message: lead.message,
-});
-
-res.status(201).json({ lead, zaloStatus });
 
   app.patch('/api/leads/:id', requireAdmin, async (req, res) => {
     const status = req.body?.status as LeadStatus;
