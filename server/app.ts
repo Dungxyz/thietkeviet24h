@@ -66,7 +66,10 @@ async function sendZaloLeadNotification(lead: {
 }) {
   const botToken = (process.env.ZALO_BOT_TOKEN || '').trim();
   const chatId = (process.env.ZALO_CHAT_ID || '').trim();
-  const webhookUrl = (process.env.ZALO_WEBHOOK_URL || '').trim();
+
+  if (!botToken || !chatId) {
+    return { sent: false, reason: 'missing_env' };
+  }
 
   const timeStr = new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
   const textMessage = [
@@ -83,30 +86,21 @@ async function sendZaloLeadNotification(lead: {
     .join('\n');
 
   try {
-    if (botToken && chatId) {
-      const formBody = new URLSearchParams({
-        chat_id: chatId,
-        text: textMessage,
-      });
-
-      const zaloRes = await fetch(`https://bot-api.zaloplatforms.com/bot${botToken}/sendMessage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: formBody.toString(),
-      });
-
-      if (!zaloRes.ok) {
-        console.error('Zalo Bot API error:', zaloRes.status, await zaloRes.text());
-      }
-    } else if (webhookUrl) {
-      await fetch(webhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...lead, text: textMessage, createdAt: timeStr }),
-      });
+    const params = new URLSearchParams({
+      chat_id: chatId,
+      text: textMessage,
+    });
+    const url = `https://bot-api.zaloplatforms.com/bot${botToken}/sendMessage?${params.toString()}`;
+    const zaloRes = await fetch(url, { method: 'GET' });
+    const rawText = await zaloRes.text();
+    if (!zaloRes.ok) {
+      console.error('Zalo Bot API error:', zaloRes.status, rawText);
+      return { sent: false, status: zaloRes.status, detail: rawText };
     }
+    return { sent: true, detail: rawText };
   } catch (err) {
     console.error('Lỗi gửi thông báo Zalo Bot:', err);
+    return { sent: false, reason: String(err) };
   }
 }
 
@@ -401,6 +395,17 @@ export function createApp() {
 
     res.status(201).json({ lead });
   });
+
+  const zaloStatus = await sendZaloLeadNotification({
+  fullName: lead.fullName,
+  phone: lead.phone,
+  email: lead.email,
+  serviceType: lead.serviceType,
+  budget: lead.budget,
+  message: lead.message,
+});
+
+res.status(201).json({ lead, zaloStatus });
 
   app.patch('/api/leads/:id', requireAdmin, async (req, res) => {
     const status = req.body?.status as LeadStatus;
