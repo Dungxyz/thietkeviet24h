@@ -56,6 +56,56 @@ function requireAdmin(req: Request, res: Response, next: NextFunction): void {
   next();
 }
 
+async function sendZaloLeadNotification(lead: {
+  fullName: string;
+  phone: string;
+  email?: string;
+  serviceType: string;
+  budget: string;
+  message?: string;
+}) {
+  const botToken = (process.env.ZALO_BOT_TOKEN || '').trim();
+  const chatId = (process.env.ZALO_CHAT_ID || '').trim();
+  const webhookUrl = (process.env.ZALO_WEBHOOK_URL || '').trim();
+
+  const timeStr = new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+  const textMessage = [
+    '🔔 YÊU CẦU TƯ VẤN MỚI - THIẾT KẾ VIỆT 24H',
+    `👤 Khách hàng: ${lead.fullName}`,
+    `📞 SĐT / Zalo: ${lead.phone}`,
+    lead.email ? `✉️ Email: ${lead.email}` : '',
+    `🛠 Dịch vụ: ${lead.serviceType}`,
+    `💰 Ngân sách: ${lead.budget}`,
+    `📝 Nhu cầu: ${lead.message || 'Không có ghi chú thêm'}`,
+    `⏰ Thời gian: ${timeStr}`,
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  try {
+    if (botToken && chatId) {
+      // Gọi trực tiếp Zapps Bot API (sendMessage)
+      await fetch(`https://bot-api.zapps.me/bot${botToken}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: textMessage,
+        }),
+      });
+    } else if (webhookUrl) {
+      // Hoặc đẩy qua Webhook trung gian (n8n / Apps Script)
+      await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...lead, text: textMessage, createdAt: timeStr }),
+      });
+    }
+  } catch (err) {
+    console.error('Lỗi gửi thông báo Zalo Bot:', err);
+  }
+}
+
 export function createApp() {
   const app = express();
   app.use(express.json({ limit: '4mb' }));
@@ -83,6 +133,9 @@ export function createApp() {
       storage: hasSupabase ? 'supabase' : 'local-file',
       hasUrl: Boolean(process.env.SUPABASE_URL),
       hasKey: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
+      hasZaloBot: Boolean(
+        (process.env.ZALO_BOT_TOKEN && process.env.ZALO_CHAT_ID) || process.env.ZALO_WEBHOOK_URL
+      ),
       mcp: MCP_SERVER_INFO,
     });
   });
@@ -332,6 +385,16 @@ export function createApp() {
     }
 
     const lead = await createLead({ fullName, phone, email, serviceType, budget, message });
+
+    await sendZaloLeadNotification({
+      fullName: lead.fullName,
+      phone: lead.phone,
+      email: lead.email,
+      serviceType: lead.serviceType,
+      budget: lead.budget,
+      message: lead.message,
+    });
+
     res.status(201).json({ lead });
   });
 
