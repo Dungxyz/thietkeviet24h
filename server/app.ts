@@ -84,20 +84,21 @@ async function sendZaloLeadNotification(lead: {
 
   try {
     if (botToken && chatId) {
-      // Gọi trực tiếp Zalo Platforms Bot API (sendMessage)
+      const formBody = new URLSearchParams({
+        chat_id: chatId,
+        text: textMessage,
+      });
+
       const zaloRes = await fetch(`https://bot-api.zaloplatforms.com/bot${botToken}/sendMessage`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: chatId,
-          text: textMessage,
-        }),
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: formBody.toString(),
       });
+
       if (!zaloRes.ok) {
         console.error('Zalo Bot API error:', zaloRes.status, await zaloRes.text());
       }
     } else if (webhookUrl) {
-      // Hoặc đẩy qua Webhook trung gian (n8n / Apps Script)
       await fetch(webhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
